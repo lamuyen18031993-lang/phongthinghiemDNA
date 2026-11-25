@@ -1,0 +1,2428 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phòng Thí Nghiệm DNA Ảo - Giải Mã Bí Ẩn Di Truyền</title>
+    <!-- Font Be Vietnam Pro chuẩn tiếng Việt -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js cho mô hình DNA 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Tone.js cho hiệu ứng âm thanh phòng thí nghiệm -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Be Vietnam Pro"', 'sans-serif'],
+                    },
+                    colors: {
+                        lab: {
+                            bg: '#060B19',
+                            panel: 'rgba(15, 23, 42, 0.72)',
+                            border: 'rgba(99, 102, 241, 0.25)',
+                            accent: '#2DD4BF',
+                            primary: '#3B82F6',
+                            lavender: '#A78BFA',
+                        },
+                        nuc: {
+                            A: '#F43F5E',
+                            T: '#FACC15',
+                            G: '#3B82F6',
+                            C: '#10B981',
+                        }
+                    },
+                    animation: {
+                        'float': 'float 4s ease-in-out infinite',
+                        'pulse-glow': 'pulseGlow 2.5s infinite',
+                        'shake': 'shake 0.45s cubic-bezier(.36,.07,.19,.97) both',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-6px)' },
+                        },
+                        pulseGlow: {
+                            '0%, 100%': { boxShadow: '0 0 15px rgba(45, 212, 191, 0.4)' },
+                            '50%': { boxShadow: '0 0 28px rgba(45, 212, 191, 0.8)' },
+                        },
+                        shake: {
+                            '10%, 90%': { transform: 'translate3d(-2px, 0, 0)' },
+                            '20%, 80%': { transform: 'translate3d(4px, 0, 0)' },
+                            '30%, 50%, 70%': { transform: 'translate3d(-6px, 0, 0)' },
+                            '40%, 60%': { transform: 'translate3d(6px, 0, 0)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #060B19;
+            color: #F8FAFC;
+            background-image: 
+                radial-gradient(circle at 15% 20%, rgba(59, 130, 246, 0.14) 0%, transparent 45%),
+                radial-gradient(circle at 85% 80%, rgba(167, 139, 250, 0.14) 0%, transparent 45%),
+                linear-gradient(rgba(30, 41, 59, 0.35) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(30, 41, 59, 0.35) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.65);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            transition: all 0.25s ease;
+        }
+
+        .nuc-badge-A { background: linear-gradient(135deg, #F43F5E, #E11D48); color: #FFF; border: 2px solid #FDA4AF; }
+        .nuc-badge-T { background: linear-gradient(135deg, #FACC15, #EAB308); color: #0F172A; border: 2px solid #FEF08A; }
+        .nuc-badge-G { background: linear-gradient(135deg, #3B82F6, #2563EB); color: #FFF; border: 2px solid #93C5FD; }
+        .nuc-badge-C { background: linear-gradient(135deg, #10B981, #059669); color: #FFF; border: 2px solid #6EE7B7; }
+
+        .nuc-selected-ring {
+            box-shadow: 0 0 0 4px #2DD4BF, 0 0 20px rgba(45, 212, 191, 0.7);
+            transform: scale(1.06);
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0F172A; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        @media print {
+            body { background: white !important; color: black !important; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .glass-panel, .glass-card {
+                background: white !important;
+                border: 1px solid #CBD5E1 !important;
+                box-shadow: none !important;
+                color: black !important;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-teal-400 selection:text-slate-900 flex flex-col">
+
+    <!-- HEADER CHUNG -->
+    <header id="app-header" class="hidden no-print sticky top-0 z-40 glass-panel border-b border-slate-700/60 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-teal-400 flex items-center justify-center shadow-lg shadow-teal-500/20">
+                    <i data-lucide="dna" class="w-6 h-6 text-slate-950 stroke-[2.5]"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-base sm:text-lg tracking-wide bg-gradient-to-r from-white via-blue-100 to-teal-300 bg-clip-text text-transparent">
+                        PHÒNG THÍ NGHIỆM DNA ẢO
+                    </h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">Giải mã bí ẩn di truyền – Bảo tàng Di truyền</p>
+                </div>
+            </div>
+
+            <nav class="hidden lg:flex items-center gap-1.5 bg-slate-900/80 p-1.5 rounded-xl border border-slate-700/70" id="nav-stepper">
+                <button onclick="navigateTo(2)" data-step="2" class="step-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+                    <span class="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[11px]">1</span> Hướng dẫn
+                </button>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
+                <button onclick="navigateTo(3)" data-step="3" class="step-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+                    <span class="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[11px]">2</span> Lắp ghép DNA
+                </button>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
+                <button onclick="navigateTo(4)" data-step="4" id="nav-btn-4" class="step-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+                    <span class="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[11px]">3</span> Mô hình 3D
+                </button>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
+                <button onclick="navigateTo(5)" data-step="5" id="nav-btn-5" class="step-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+                    <span class="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[11px]">4</span> Xưởng thiết kế
+                </button>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
+                <button onclick="navigateTo(6)" data-step="6" id="nav-btn-6" class="step-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+                    <span class="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[11px]">5</span> Chứng nhận
+                </button>
+            </nav>
+
+            <div class="flex items-center gap-2.5 bg-slate-900/90 border border-indigo-500/30 px-3.5 py-1.5 rounded-xl">
+                <button onclick="toggleSound()" id="btn-sound-toggle" title="Bật / Tắt âm thanh" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-300 transition">
+                    <i data-lucide="volume-2" class="w-4 h-4" id="icon-sound"></i>
+                </button>
+                <div class="w-2.5 h-2.5 rounded-full bg-teal-400 animate-pulse"></div>
+                <div class="text-right">
+                    <div id="header-team-name" class="text-xs sm:text-sm font-bold text-teal-300 max-w-[160px] sm:max-w-[220px] truncate">Nhóm 1</div>
+                    <div id="header-team-meta" class="text-[11px] text-slate-400 hidden sm:block">Chế độ cơ bản</div>
+                </div>
+                <button onclick="openEditTeamModal()" title="Thay đổi tên nhóm" class="ml-1 p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition">
+                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- NỘI DUNG CHÍNH 6 MÀN HÌNH -->
+    <main class="flex-1 flex flex-col">
+
+        <!-- MÀN HÌNH 1: CHÀO MỪNG VÀ NHẬP TÊN NHÓM -->
+        <section id="screen-1" class="screen-section flex-1 flex items-center justify-center p-4 sm:p-8 relative overflow-hidden">
+            <div id="hero-3d-bg" class="absolute inset-y-0 right-0 w-full lg:w-1/2 pointer-events-none opacity-65"></div>
+
+            <div class="max-w-6xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs sm:text-sm font-semibold">
+                        <i data-lucide="sparkles" class="w-4 h-4 text-teal-400"></i>
+                        <span>CHỦ ĐỀ STEM KHTN LỚP 9 • BẢO TÀNG DI TRUYỀN</span>
+                    </div>
+
+                    <div class="space-y-2">
+                        <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
+                            PHÒNG THÍ NGHIỆM <span class="bg-gradient-to-r from-teal-300 via-blue-400 to-purple-400 bg-clip-text text-transparent">DNA ẢO</span>
+                        </h1>
+                        <h2 class="text-lg sm:text-2xl font-bold text-teal-300 tracking-wide">
+                            GIẢI CỨU MẬT MÃ DI TRUYỀN
+                        </h2>
+                    </div>
+
+                    <p class="text-slate-300 text-sm sm:text-base leading-relaxed bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50">
+                        "Chào mừng các nhà khoa học nhí đến với Bảo tàng Di truyền! Một đoạn DNA quý giá đang gặp sự cố. Các em hãy sử dụng kiến thức khoa học để khôi phục cấu trúc DNA và hoàn thành nhiệm vụ."
+                    </p>
+
+                    <div class="glass-panel rounded-3xl p-6 sm:p-7 space-y-5 border-t border-teal-400/30">
+                        <div class="flex items-center gap-2.5 border-b border-slate-700/70 pb-3">
+                            <i data-lucide="users" class="w-5 h-5 text-teal-400"></i>
+                            <h3 class="font-bold text-base sm:text-lg text-white tracking-wide">THÔNG TIN NHÓM NGHIÊN CỨU</h3>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label for="input-team-name" class="block text-xs sm:text-sm font-bold text-slate-200 mb-1.5">
+                                    TÊN NHÓM <span class="text-rose-400">* (Bắt buộc)</span>
+                                </label>
+                                <input type="text" id="input-team-name" placeholder="Ví dụ: Nhóm 1 – Nhà khoa học DNA"
+                                    class="w-full px-4 py-3.5 rounded-xl bg-slate-900/90 border border-slate-600 focus:border-teal-400 focus:ring-2 focus:ring-teal-400/30 text-white placeholder-slate-500 text-base font-medium outline-none transition">
+                                <p id="team-name-error" class="hidden mt-2 text-sm text-rose-400 font-semibold flex items-center gap-1.5">
+                                    <i data-lucide="alert-circle" class="w-4 h-4"></i>
+                                    <span>Vui lòng nhập tên nhóm để bắt đầu nhiệm vụ!</span>
+                                </p>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="input-team-class" class="block text-xs sm:text-sm font-semibold text-slate-300 mb-1.5">
+                                        LỚP <span class="text-slate-500 font-normal">(Không bắt buộc)</span>
+                                    </label>
+                                    <select id="input-team-class" class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-600 focus:border-teal-400 text-white text-sm sm:text-base outline-none transition">
+                                        <option value="">-- Chọn lớp 9 --</option>
+                                        <option value="Lớp 9A1">Lớp 9A1</option>
+                                        <option value="Lớp 9A2">Lớp 9A2</option>
+                                        <option value="Lớp 9A3">Lớp 9A3</option>
+                                        <option value="Lớp 9A4">Lớp 9A4</option>
+                                        <option value="Lớp 9A5">Lớp 9A5</option>
+                                        <option value="Lớp 9A6">Lớp 9A6</option>
+                                        <option value="Lớp 9A7">Lớp 9A7</option>
+                                        <option value="Lớp 9A8">Lớp 9A8</option>
+                                        <option value="Lớp 9A9">Lớp 9A9</option>
+                                        <option value="Lớp 9A10">Lớp 9A10</option>
+                                        <option value="Lớp 9 khác">Lớp 9 khác</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="input-team-leader" class="block text-xs sm:text-sm font-semibold text-slate-300 mb-1.5">
+                                        TÊN ĐỘI TRƯỞNG <span class="text-slate-500 font-normal">(Không bắt buộc)</span>
+                                    </label>
+                                    <input type="text" id="input-team-leader" placeholder="Nhập tên nhóm trưởng..."
+                                        class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-600 focus:border-teal-400 text-white placeholder-slate-500 text-sm sm:text-base outline-none transition">
+                                </div>
+                            </div>
+                        </div>
+
+                        <button onclick="handleStartJourney()"
+                            class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-teal-500 hover:from-blue-500 hover:to-teal-400 text-white font-extrabold text-base sm:text-lg tracking-wide shadow-lg shadow-blue-600/30 hover:shadow-teal-500/40 transform hover:-translate-y-0.5 active:translate-y-0 transition flex items-center justify-center gap-3">
+                            <span>BẮT ĐẦU HÀNH TRÌNH</span>
+                            <i data-lucide="arrow-right-circle" class="w-6 h-6"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-5 hidden lg:flex flex-col items-center justify-center">
+                    <div class="glass-panel p-6 rounded-3xl border border-teal-400/20 max-w-sm w-full space-y-4 backdrop-blur-xl">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-teal-400">Hồ sơ mẫu vật #DNA-08</span>
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">Cần khôi phục</span>
+                        </div>
+                        <div class="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
+                            <div class="text-xs text-slate-400 font-medium">Mạch khuôn gốc (5' → 3'):</div>
+                            <div class="flex justify-between gap-1 font-mono font-bold text-sm">
+                                <span class="w-8 h-8 rounded-lg nuc-badge-A flex items-center justify-center">A</span>
+                                <span class="w-8 h-8 rounded-lg nuc-badge-T flex items-center justify-center">T</span>
+                                <span class="w-8 h-8 rounded-lg nuc-badge-G flex items-center justify-center">G</span>
+                                <span class="w-8 h-8 rounded-lg nuc-badge-C flex items-center justify-center">C</span>
+                                <span class="w-8 h-8 rounded-lg nuc-badge-C flex items-center justify-center">C</span>
+                                <span class="w-8 h-8 rounded-lg nuc-badge-A flex items-center justify-center">A</span>
+                                <span class="w-8 h-8 rounded-lg nuc-badge-T flex items-center justify-center">T</span>
+                                <span class="w-8 h-8 rounded-lg nuc-badge-G flex items-center justify-center">G</span>
+                            </div>
+                            <div class="border-t border-dashed border-slate-700 my-2"></div>
+                            <div class="text-xs text-slate-400 font-medium">Mạch bổ sung (3' → 5'):</div>
+                            <div class="flex justify-between gap-1 font-mono font-bold text-sm">
+                                <span class="w-8 h-8 rounded-lg bg-slate-800 border border-dashed border-slate-500 flex items-center justify-center text-slate-400">?</span>
+                                <span class="w-8 h-8 rounded-lg bg-slate-800 border border-dashed border-slate-500 flex items-center justify-center text-slate-400">?</span>
+                                <span class="w-8 h-8 rounded-lg bg-slate-800 border border-dashed border-slate-500 flex items-center justify-center text-slate-400">?</span>
+                                <span class="w-8 h-8 rounded-lg bg-slate-800 border border-dashed border-slate-500 flex items-center justify-center text-slate-400">?</span>
+                                <span class="w-8 h-8 rounded-lg bg-slate-800 border border-dashed border-slate-500 flex items-center justify-center text-slate-400">?</span>
+                                <span class="w-8 h-8 rounded-lg bg-slate-800 border border-dashed border-slate-500 flex items-center justify-center text-slate-400">?</span>
+                                <span class="w-8 h-8 rounded-lg bg-slate-800 border border-dashed border-slate-500 flex items-center justify-center text-slate-400">?</span>
+                                <span class="w-8 h-8 rounded-lg bg-slate-800 border border-dashed border-slate-500 flex items-center justify-center text-slate-400">?</span>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-400 text-center">Từ vật liệu tái chế đến kiệt tác mô hình DNA chuẩn xác</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MÀN HÌNH 2: HƯỚNG DẪN THÍ NGHIỆM -->
+        <section id="screen-2" class="screen-section hidden flex-1 p-4 sm:p-8">
+            <div class="max-w-5xl mx-auto space-y-6">
+                <div class="glass-panel rounded-3xl p-6 sm:p-8 text-center space-y-3 border-t border-purple-400/30">
+                    <span class="px-3.5 py-1 rounded-full bg-teal-500/15 text-teal-300 border border-teal-400/30 text-xs font-bold uppercase tracking-wider">
+                        Quy trình chuẩn phòng thí nghiệm
+                    </span>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-white">HƯỚNG DẪN THỰC HIỆN NHIỆM VỤ</h2>
+                    <p class="text-base sm:text-lg text-indigo-200 font-medium">
+                        Xin chào <span id="guide-team-name" class="text-teal-300 font-extrabold underline decoration-teal-400/50">Nhóm</span>! Các em đã sẵn sàng trở thành những kỹ sư di truyền chưa?
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="glass-card rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                        <div class="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/40 text-blue-300 font-extrabold flex items-center justify-center text-lg">1</div>
+                        <h3 class="font-bold text-white text-base">BƯỚC 1 – QUAN SÁT MẠCH DNA</h3>
+                        <p class="text-sm text-slate-300 leading-relaxed">Quan sát trình tự nucleotide của mạch DNA được cung cấp và chiều 5′ → 3′ của mạch khuôn.</p>
+                    </div>
+                    <div class="glass-card rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                        <div class="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-400/40 text-purple-300 font-extrabold flex items-center justify-center text-lg">2</div>
+                        <h3 class="font-bold text-white text-base">BƯỚC 2 – LỰA CHỌN NUCLEOTIDE</h3>
+                        <p class="text-sm text-slate-300 leading-relaxed">Sử dụng các nucleotide A, T, G, C trong khay vật liệu để ghép vào mạch còn thiếu.</p>
+                    </div>
+                    <div class="glass-card rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                        <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-300 font-extrabold flex items-center justify-center text-lg">3</div>
+                        <h3 class="font-bold text-white text-base">BƯỚC 3 – KIỂM TRA VÀ SỬA LỖI</h3>
+                        <p class="text-sm text-slate-300 leading-relaxed">Nhấn nút "KIỂM TRA KẾT QUẢ" để nhận phản hồi. Nếu ghép sai, hãy tìm nguyên nhân và sửa lại.</p>
+                    </div>
+                    <div class="glass-card rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                        <div class="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-400/40 text-teal-300 font-extrabold flex items-center justify-center text-lg">4</div>
+                        <h3 class="font-bold text-white text-base">BƯỚC 4 – KHÁM PHÁ CẤU TRÚC DNA</h3>
+                        <p class="text-sm text-slate-300 leading-relaxed">Khi hoàn thành chính xác 8/8 cặp base, quan sát mô hình DNA xoắn kép 3D và khám phá phân tử.</p>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-3xl p-6 sm:p-8 border border-teal-500/30 space-y-6">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700/70 pb-3">
+                        <div class="flex items-center gap-2.5">
+                            <i data-lucide="book-open-check" class="w-6 h-6 text-teal-400"></i>
+                            <h3 class="text-lg sm:text-xl font-bold text-white">BẢNG NHẮC KIẾN THỨC TRỌNG TÂM</h3>
+                        </div>
+                        <span class="text-xs font-semibold px-3 py-1 rounded-full bg-slate-800 text-slate-300">Nguyên tắc bổ sung (NTBS)</span>
+                    </div>
+
+                    <p class="text-sm sm:text-base text-slate-200 leading-relaxed bg-slate-900/70 p-4 rounded-2xl border-l-4 border-teal-400">
+                        "DNA gồm hai mạch polynucleotide có chiều ngược nhau (một mạch <strong>5′ → 3′</strong> và mạch kia <strong>3′ → 5′</strong>). Các base nitrogen giữa hai mạch liên kết với nhau bằng liên kết hydrogen theo <strong>nguyên tắc bổ sung</strong>: <strong>A liên kết với T</strong>, <strong>G liên kết với C</strong>."
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="p-3.5 rounded-2xl bg-slate-900/80 border border-rose-500/40 flex items-center gap-3">
+                                <div class="w-11 h-11 rounded-xl nuc-badge-A font-extrabold text-xl flex items-center justify-center shrink-0">A</div>
+                                <div>
+                                    <div class="font-bold text-white text-sm">Adenine</div>
+                                    <div class="text-xs text-rose-300">Màu đỏ san hô</div>
+                                </div>
+                            </div>
+                            <div class="p-3.5 rounded-2xl bg-slate-900/80 border border-yellow-400/40 flex items-center gap-3">
+                                <div class="w-11 h-11 rounded-xl nuc-badge-T font-extrabold text-xl flex items-center justify-center shrink-0">T</div>
+                                <div>
+                                    <div class="font-bold text-white text-sm">Thymine</div>
+                                    <div class="text-xs text-yellow-300">Màu vàng</div>
+                                </div>
+                            </div>
+                            <div class="p-3.5 rounded-2xl bg-slate-900/80 border border-blue-500/40 flex items-center gap-3">
+                                <div class="w-11 h-11 rounded-xl nuc-badge-G font-extrabold text-xl flex items-center justify-center shrink-0">G</div>
+                                <div>
+                                    <div class="font-bold text-white text-sm">Guanine</div>
+                                    <div class="text-xs text-blue-300">Màu xanh dương</div>
+                                </div>
+                            </div>
+                            <div class="p-3.5 rounded-2xl bg-slate-900/80 border border-emerald-500/40 flex items-center gap-3">
+                                <div class="w-11 h-11 rounded-xl nuc-badge-C font-extrabold text-xl flex items-center justify-center shrink-0">C</div>
+                                <div>
+                                    <div class="font-bold text-white text-sm">Cytosine</div>
+                                    <div class="text-xs text-emerald-300">Màu xanh lá</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-700/80 space-y-4">
+                            <div class="text-xs font-bold uppercase tracking-wider text-center text-slate-400">Minh họa liên kết cặp base bổ sung</div>
+                            <div class="flex items-center justify-center gap-3">
+                                <div class="px-4 py-2 rounded-xl nuc-badge-A font-extrabold text-lg shadow">A</div>
+                                <div class="flex flex-col gap-1.5 w-24 items-center">
+                                    <div class="w-full border-t-2 border-dashed border-teal-400"></div>
+                                    <div class="w-full border-t-2 border-dashed border-teal-400"></div>
+                                    <span class="text-[10px] text-teal-300 font-semibold">2 liên kết H</span>
+                                </div>
+                                <div class="px-4 py-2 rounded-xl nuc-badge-T font-extrabold text-lg shadow">T</div>
+                            </div>
+                            <div class="flex items-center justify-center gap-3">
+                                <div class="px-4 py-2 rounded-xl nuc-badge-G font-extrabold text-lg shadow">G</div>
+                                <div class="flex flex-col gap-1 w-24 items-center">
+                                    <div class="w-full border-t-2 border-dashed border-purple-400"></div>
+                                    <div class="w-full border-t-2 border-dashed border-purple-400"></div>
+                                    <div class="w-full border-t-2 border-dashed border-purple-400"></div>
+                                    <span class="text-[10px] text-purple-300 font-semibold">3 liên kết H</span>
+                                </div>
+                                <div class="px-4 py-2 rounded-xl nuc-badge-C font-extrabold text-lg shadow">C</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-4 pt-2">
+                    <button onclick="navigateTo(1)" class="px-6 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm sm:text-base border border-slate-600 transition flex items-center gap-2">
+                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                        <span>QUAY LẠI</span>
+                    </button>
+                    <button onclick="navigateTo(3)" class="px-8 py-4 rounded-2xl bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-400 hover:to-blue-500 text-slate-950 font-extrabold text-base sm:text-lg shadow-lg shadow-teal-500/30 transition flex items-center gap-2.5">
+                        <span>BẮT ĐẦU THÍ NGHIỆM</span>
+                        <i data-lucide="flask-conical" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- MÀN HÌNH 3: THÍ NGHIỆM ẢO – LẮP GHÉP MẠCH DNA -->
+        <section id="screen-3" class="screen-section hidden flex-1 p-3 sm:p-6">
+            <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                
+                <!-- NGÂN HÀNG NUCLEOTIDE -->
+                <div class="lg:col-span-3 glass-panel rounded-3xl p-5 space-y-4 border-t border-blue-400/30">
+                    <div class="flex items-center gap-2 border-b border-slate-700/70 pb-3">
+                        <i data-lucide="database" class="w-5 h-5 text-blue-400"></i>
+                        <h2 class="font-extrabold text-base text-white tracking-wide">NGÂN HÀNG NUCLEOTIDE</h2>
+                    </div>
+
+                    <p class="text-xs text-slate-300 bg-slate-900/70 p-3 rounded-xl border border-slate-700/60 leading-relaxed">
+                        Kéo nucleotide vào vị trí còn thiếu hoặc <strong>chạm chọn nucleotide</strong> rồi chạm vào ô cần ghép.
+                    </p>
+
+                    <div class="grid grid-cols-2 lg:grid-cols-1 gap-3" id="nucleotide-bank">
+                        <div draggable="true" data-nuc="A" onclick="selectBankNucleotide('A')"
+                            class="bank-card nuc-badge-A rounded-2xl p-3.5 cursor-grab active:cursor-grabbing select-none shadow-lg hover:brightness-110 transition flex items-center justify-between animate-float" style="animation-delay: 0s;">
+                            <div class="flex items-center gap-3">
+                                <span class="w-10 h-10 rounded-xl bg-black/20 flex items-center justify-center font-black text-2xl">A</span>
+                                <div class="text-left">
+                                    <div class="font-extrabold text-sm sm:text-base">Adenine</div>
+                                    <div class="text-[11px] opacity-90">Nucleotide loại A</div>
+                                </div>
+                            </div>
+                            <i data-lucide="grip-vertical" class="w-5 h-5 opacity-75"></i>
+                        </div>
+
+                        <div draggable="true" data-nuc="T" onclick="selectBankNucleotide('T')"
+                            class="bank-card nuc-badge-T rounded-2xl p-3.5 cursor-grab active:cursor-grabbing select-none shadow-lg hover:brightness-105 transition flex items-center justify-between animate-float" style="animation-delay: 0.4s;">
+                            <div class="flex items-center gap-3">
+                                <span class="w-10 h-10 rounded-xl bg-black/15 flex items-center justify-center font-black text-2xl">T</span>
+                                <div class="text-left">
+                                    <div class="font-extrabold text-sm sm:text-base">Thymine</div>
+                                    <div class="text-[11px] opacity-90">Nucleotide loại T</div>
+                                </div>
+                            </div>
+                            <i data-lucide="grip-vertical" class="w-5 h-5 opacity-75"></i>
+                        </div>
+
+                        <div draggable="true" data-nuc="G" onclick="selectBankNucleotide('G')"
+                            class="bank-card nuc-badge-G rounded-2xl p-3.5 cursor-grab active:cursor-grabbing select-none shadow-lg hover:brightness-110 transition flex items-center justify-between animate-float" style="animation-delay: 0.8s;">
+                            <div class="flex items-center gap-3">
+                                <span class="w-10 h-10 rounded-xl bg-black/20 flex items-center justify-center font-black text-2xl">G</span>
+                                <div class="text-left">
+                                    <div class="font-extrabold text-sm sm:text-base">Guanine</div>
+                                    <div class="text-[11px] opacity-90">Nucleotide loại G</div>
+                                </div>
+                            </div>
+                            <i data-lucide="grip-vertical" class="w-5 h-5 opacity-75"></i>
+                        </div>
+
+                        <div draggable="true" data-nuc="C" onclick="selectBankNucleotide('C')"
+                            class="bank-card nuc-badge-C rounded-2xl p-3.5 cursor-grab active:cursor-grabbing select-none shadow-lg hover:brightness-110 transition flex items-center justify-between animate-float" style="animation-delay: 1.2s;">
+                            <div class="flex items-center gap-3">
+                                <span class="w-10 h-10 rounded-xl bg-black/20 flex items-center justify-center font-black text-2xl">C</span>
+                                <div class="text-left">
+                                    <div class="font-extrabold text-sm sm:text-base">Cytosine</div>
+                                    <div class="text-[11px] opacity-90">Nucleotide loại C</div>
+                                </div>
+                            </div>
+                            <i data-lucide="grip-vertical" class="w-5 h-5 opacity-75"></i>
+                        </div>
+                    </div>
+
+                    <div id="selected-nuc-indicator" class="hidden text-center py-2 px-3 rounded-xl bg-teal-500/20 border border-teal-400/50 text-teal-200 text-xs font-bold">
+                        Đang chọn: <span id="selected-nuc-label" class="text-base underline">A</span> — Chạm vào ô trống để đặt!
+                    </div>
+                </div>
+
+                <!-- BÀN THÍ NGHIỆM DNA -->
+                <div class="lg:col-span-6 glass-panel rounded-3xl p-4 sm:p-6 space-y-4 border-t border-teal-400/40">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700/70 pb-3">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="microscope" class="w-5 h-5 text-teal-400"></i>
+                            <h2 class="font-extrabold text-base sm:text-lg text-white">KHÔI PHỤC MẠCH DNA BỊ THIẾU</h2>
+                        </div>
+                        <span id="lab-mode-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                            Chế độ cơ bản
+                        </span>
+                    </div>
+
+                    <div class="bg-slate-950/85 rounded-2xl p-3 sm:p-5 border border-slate-800 relative">
+                        <div class="flex justify-between items-center text-xs sm:text-sm font-extrabold mb-3 px-2">
+                            <div class="flex items-center gap-1.5 text-blue-400">
+                                <span class="px-2 py-0.5 rounded bg-blue-500/20 border border-blue-400/40">Đầu 5′</span>
+                                <span>Mạch khuôn gốc</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 text-purple-400">
+                                <span>Mạch bổ sung</span>
+                                <span class="px-2 py-0.5 rounded bg-purple-500/20 border border-purple-400/40">Đầu 3′</span>
+                            </div>
+                        </div>
+
+                        <div id="dna-ladder-container" class="space-y-2.5 relative"></div>
+
+                        <div class="flex justify-between items-center text-xs sm:text-sm font-extrabold mt-3 px-2">
+                            <div class="flex items-center gap-1.5 text-blue-400">
+                                <span class="px-2 py-0.5 rounded bg-blue-500/20 border border-blue-400/40">Đầu 3′</span>
+                                <span class="text-slate-400 font-normal text-xs">(Chiều 5′ → 3′)</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 text-purple-400">
+                                <span class="text-slate-400 font-normal text-xs">(Chiều 3′ → 5′)</span>
+                                <span class="px-2 py-0.5 rounded bg-purple-500/20 border border-purple-400/40">Đầu 5′</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="lab-feedback-box" class="hidden rounded-2xl p-4 border transition-all">
+                        <div class="flex items-start gap-3">
+                            <div id="lab-feedback-icon" class="mt-0.5 shrink-0"></div>
+                            <div class="space-y-1 flex-1">
+                                <h4 id="lab-feedback-title" class="font-extrabold text-sm sm:text-base"></h4>
+                                <p id="lab-feedback-desc" class="text-xs sm:text-sm leading-relaxed"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="lab-success-cta" class="hidden pt-1">
+                        <button onclick="navigateTo(4)"
+                            class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-teal-400 via-emerald-400 to-blue-500 hover:brightness-110 text-slate-950 font-extrabold text-base sm:text-lg tracking-wide shadow-xl animate-pulse-glow transition flex items-center justify-center gap-3">
+                            <i data-lucide="box" class="w-6 h-6 stroke-[2.5]"></i>
+                            <span>KHÁM PHÁ DNA XOẮN KÉP 3D</span>
+                            <i data-lucide="arrow-right" class="w-6 h-6 stroke-[2.5]"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- BẢNG ĐIỀU KHIỂN -->
+                <div class="lg:col-span-3 glass-panel rounded-3xl p-5 space-y-5 border-t border-purple-400/30">
+                    <div class="flex items-center gap-2 border-b border-slate-700/70 pb-3">
+                        <i data-lucide="sliders" class="w-5 h-5 text-purple-400"></i>
+                        <h2 class="font-extrabold text-base text-white tracking-wide">BẢNG ĐIỀU KHIỂN</h2>
+                    </div>
+
+                    <div class="space-y-3 bg-slate-900/70 p-4 rounded-2xl border border-slate-700/60">
+                        <div>
+                            <div class="text-[11px] text-slate-400 uppercase font-semibold">Nhóm thực hiện</div>
+                            <div id="panel-team-name" class="font-bold text-teal-300 text-sm truncate">Nhóm 1</div>
+                        </div>
+                        <div>
+                            <div class="text-[11px] text-slate-400 uppercase font-semibold">Nhiệm vụ</div>
+                            <div id="panel-mission-name" class="font-semibold text-white text-xs sm:text-sm">Khôi phục đoạn DNA mẫu</div>
+                        </div>
+
+                        <div class="pt-1">
+                            <div class="flex justify-between text-xs font-bold mb-1.5">
+                                <span class="text-slate-300">Vị trí đã lắp</span>
+                                <span id="panel-progress-text" class="text-teal-400">0 / 8</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div id="panel-progress-bar" class="h-full bg-gradient-to-r from-blue-500 to-teal-400 transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
+                            <div class="bg-slate-950/60 p-2.5 rounded-xl text-center">
+                                <div id="stat-checks" class="text-lg font-extrabold text-blue-400">0</div>
+                                <div class="text-[11px] text-slate-400">Lần kiểm tra</div>
+                            </div>
+                            <div class="bg-slate-950/60 p-2.5 rounded-xl text-center">
+                                <div id="stat-fixes" class="text-lg font-extrabold text-amber-400">0</div>
+                                <div class="text-[11px] text-slate-400">Lỗi đã sửa</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2.5">
+                        <button onclick="checkDnaResult()"
+                            class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-sm shadow-lg shadow-blue-600/25 transition flex items-center justify-center gap-2">
+                            <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                            <span>KIỂM TRA KẾT QUẢ</span>
+                        </button>
+
+                        <button onclick="showHint()"
+                            class="w-full py-3 px-4 rounded-xl bg-teal-500/15 hover:bg-teal-500/25 text-teal-300 border border-teal-500/40 font-bold text-sm transition flex items-center justify-center gap-2">
+                            <i data-lucide="lightbulb" class="w-4 h-4"></i>
+                            <span>GỢI Ý</span>
+                        </button>
+
+                        <button onclick="clearWrongSlots()"
+                            class="w-full py-3 px-4 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 font-bold text-sm transition flex items-center justify-center gap-2">
+                            <i data-lucide="eraser" class="w-4 h-4"></i>
+                            <span>SỬA LỖI (XÓA Ô SAI)</span>
+                        </button>
+
+                        <button onclick="confirmResetLab()"
+                            class="w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 font-bold text-sm transition flex items-center justify-center gap-2">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                            <span>LÀM LẠI</span>
+                        </button>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-700/70 space-y-2">
+                        <div class="text-[11px] font-bold text-slate-400 uppercase">Chế độ luyện tập</div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="switchMode('basic')" id="btn-mode-basic" class="py-2 px-2 rounded-xl text-xs font-bold border transition">
+                                Cơ bản
+                            </button>
+                            <button onclick="switchMode('challenge')" id="btn-mode-challenge" class="py-2 px-2 rounded-xl text-xs font-bold border transition">
+                                Thử thách mới
+                            </button>
+                        </div>
+                    </div>
+
+                    <button onclick="navigateTo(2)" class="w-full py-2 text-xs text-slate-400 hover:text-white flex items-center justify-center gap-1 transition">
+                        <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Quay lại hướng dẫn
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- MÀN HÌNH 4: KHÁM PHÁ CẤU TRÚC DNA 3D -->
+        <section id="screen-4" class="screen-section hidden flex-1 p-4 sm:p-6">
+            <div class="max-w-7xl mx-auto space-y-5">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <span class="text-xs font-bold text-teal-400 uppercase tracking-wider">Mô phỏng phân tử trực quan</span>
+                        <h2 class="text-2xl sm:text-3xl font-extrabold text-white">KHÁM PHÁ KIỆT TÁC DNA XOẮN KÉP</h2>
+                    </div>
+                    <button onclick="navigateTo(3)" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-bold border border-slate-600 flex items-center gap-2">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại bàn thí nghiệm
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div class="lg:col-span-8 glass-panel rounded-3xl p-4 flex flex-col space-y-3 border border-teal-400/30">
+                        <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-900/90 p-2.5 rounded-2xl border border-slate-700/70">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button id="btn-toggle-helix" onclick="toggleDnaHelix()"
+                                    class="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-500 to-blue-600 text-slate-950 font-extrabold text-xs sm:text-sm shadow transition flex items-center gap-1.5">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                                    <span id="text-toggle-helix">TẠO XOẮN KÉP</span>
+                                </button>
+                                <button id="btn-toggle-spin" onclick="toggleAutoRotate()"
+                                    class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs sm:text-sm border border-slate-600 transition flex items-center gap-1.5">
+                                    <i data-lucide="play" class="w-4 h-4" id="icon-spin"></i>
+                                    <span id="text-spin">Tự xoay: BẬT</span>
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <button onclick="zoom3D(0.85)" title="Phóng to" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-600">
+                                    <i data-lucide="zoom-in" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="zoom3D(1.18)" title="Thu nhỏ" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-600">
+                                    <i data-lucide="zoom-out" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="resetCamera3D()" title="Góc nhìn mặc định" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-600">
+                                    <i data-lucide="maximize-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="relative w-full h-[380px] sm:h-[460px] rounded-2xl bg-slate-950 overflow-hidden border border-slate-800" id="dna-3d-wrapper">
+                            <div id="dna-3d-canvas-container" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+
+                            <div class="absolute top-3 left-3 flex flex-col gap-1.5 pointer-events-none">
+                                <span class="px-2.5 py-1 rounded-lg bg-slate-900/85 border border-blue-400/40 text-blue-300 text-[11px] font-bold">
+                                    ● Khung đường – phosphate (Mạch 5′→3′)
+                                </span>
+                                <span class="px-2.5 py-1 rounded-lg bg-slate-900/85 border border-purple-400/40 text-purple-300 text-[11px] font-bold">
+                                    ● Khung đường – phosphate (Mạch 3′→5′)
+                                </span>
+                                <span class="px-2.5 py-1 rounded-lg bg-slate-900/85 border border-teal-400/40 text-teal-300 text-[11px] font-bold">
+                                    ● Cặp base bổ sung (Chạm vào cặp base để xem)
+                                </span>
+                            </div>
+
+                            <div id="base-pair-inspector" class="hidden absolute bottom-3 left-3 right-3 sm:right-auto sm:max-w-md glass-panel p-3.5 rounded-2xl border border-teal-400/50 shadow-xl">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span id="inspector-title" class="font-extrabold text-sm text-teal-300">Cặp base A – T</span>
+                                    <button onclick="document.getElementById('base-pair-inspector').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                                        <i data-lucide="x" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                                <p id="inspector-desc" class="text-xs text-slate-200 leading-relaxed"></p>
+                            </div>
+
+                            <div class="absolute bottom-3 right-3 text-[11px] text-slate-400 bg-slate-900/80 px-2.5 py-1 rounded-lg pointer-events-none hidden sm:block">
+                                Kéo chuột / vuốt để xoay 360° • Cuộn để thu phóng
+                            </div>
+                        </div>
+
+                        <div class="p-3 rounded-xl bg-indigo-950/50 border border-indigo-500/30 text-xs text-indigo-200 flex items-start gap-2">
+                            <i data-lucide="info" class="w-4 h-4 text-indigo-400 shrink-0 mt-0.5"></i>
+                            <span>
+                                <strong>Lưu ý khoa học:</strong> Đây là mô hình minh họa một đoạn DNA gồm 8 cặp base, không biểu diễn chính xác mọi tỉ lệ và chi tiết hóa học của phân tử thật. Việc chuyển từ dạng thang sang dạng xoắn chỉ là thao tác trực quan hóa.
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-4 glass-panel rounded-3xl p-5 sm:p-6 flex flex-col justify-between space-y-5 border-t border-purple-400/30">
+                        <div class="space-y-4">
+                            <div class="flex items-center gap-2 border-b border-slate-700/70 pb-3">
+                                <i data-lucide="help-circle" class="w-5 h-5 text-purple-400"></i>
+                                <h3 class="font-extrabold text-base text-white">CÂU HỎI CỦNG CỐ KIẾN THỨC</h3>
+                            </div>
+
+                            <div id="quiz-container" class="space-y-4"></div>
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-700/70 space-y-3">
+                            <div id="quiz-status-msg" class="text-xs text-center text-slate-400">
+                                Hoàn thành 3 câu hỏi củng cố để mở khóa xưởng chế tạo.
+                            </div>
+                            <button id="btn-to-screen-5" onclick="navigateTo(5)" disabled
+                                class="w-full py-4 px-5 rounded-2xl bg-slate-800 text-slate-500 font-extrabold text-sm sm:text-base transition flex items-center justify-center gap-2 cursor-not-allowed">
+                                <span>CHUYỂN SANG XƯỞNG THIẾT KẾ DNA</span>
+                                <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MÀN HÌNH 5: XƯỞNG THIẾT KẾ MÔ HÌNH DNA -->
+        <section id="screen-5" class="screen-section hidden flex-1 p-4 sm:p-8">
+            <div class="max-w-6xl mx-auto space-y-6">
+                <div class="glass-panel rounded-3xl p-6 sm:p-8 text-center space-y-2 border-t border-teal-400/40">
+                    <span class="px-3.5 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-400/30 text-xs font-bold uppercase">
+                        Dự án STEM: Chế tạo mô hình thực tế
+                    </span>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-white">TỪ PHÒNG THÍ NGHIỆM ẢO ĐẾN KIỆT TÁC DNA TÁI CHẾ</h2>
+                    <p class="text-sm sm:text-base text-slate-300 max-w-3xl mx-auto">
+                        "<span id="blueprint-team-name" class="text-teal-300 font-bold">Nhóm</span> đã giải mã thành công cấu trúc DNA! Nhiệm vụ tiếp theo là biến mô hình ảo thành mô hình DNA thật bằng vật liệu tái chế."
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div class="lg:col-span-8 glass-panel rounded-3xl p-5 sm:p-6 space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-700/70 pb-3">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="ruler" class="w-5 h-5 text-teal-400"></i>
+                                <h3 class="font-extrabold text-base sm:text-lg text-white">BẢN THIẾT KẾ KỸ THUẬT 2D (16 THẺ BASE)</h3>
+                            </div>
+                            <span class="text-xs text-slate-400 font-mono">Tỉ lệ chuẩn lắp ghép</span>
+                        </div>
+
+                        <div class="bg-slate-950 rounded-2xl p-3 border border-slate-800 overflow-x-auto">
+                            <svg id="blueprint-svg" viewBox="0 0 760 440" class="w-full min-w-[600px] h-auto select-none" xmlns="http://www.w3.org/2000/svg"></svg>
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                            <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-700/70 flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-indigo-500/30 border border-indigo-400 text-indigo-300 font-bold flex items-center justify-center">P</span>
+                                <span class="text-slate-300">Nhóm Phosphate</span>
+                            </div>
+                            <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-700/70 flex items-center gap-2">
+                                <span class="w-6 h-6 rounded bg-teal-500/30 border border-teal-400 text-teal-300 font-bold flex items-center justify-center">D</span>
+                                <span class="text-slate-300">Đường Deoxyribose</span>
+                            </div>
+                            <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-700/70 flex items-center gap-2">
+                                <span class="w-6 h-6 rounded bg-slate-700 text-white font-bold flex items-center justify-center">16</span>
+                                <span class="text-slate-300">Thẻ base rời</span>
+                            </div>
+                            <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-700/70 flex items-center gap-2">
+                                <span class="w-6 h-6 rounded bg-amber-500/30 text-amber-300 font-bold flex items-center justify-center">⚡</span>
+                                <span class="text-slate-300">Khớp nối Velcro</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-4 glass-panel rounded-3xl p-5 sm:p-6 flex flex-col justify-between space-y-5">
+                        <div class="space-y-4">
+                            <div class="flex items-center gap-2 border-b border-slate-700/70 pb-3">
+                                <i data-lucide="recycle" class="w-5 h-5 text-emerald-400"></i>
+                                <h3 class="font-extrabold text-base text-white">GỢI Ý VẬT LIỆU TÁI CHẾ</h3>
+                            </div>
+
+                            <ul class="space-y-3 text-sm text-slate-300">
+                                <li class="flex items-start gap-3 bg-slate-900/70 p-3 rounded-xl border border-slate-800">
+                                    <i data-lucide="package" class="w-5 h-5 text-amber-400 shrink-0 mt-0.5"></i>
+                                    <span><strong>Bìa carton tái chế:</strong> Cắt thành 16 thẻ nucleotide (tô màu đỏ, vàng, xanh dương, xanh lá theo mã).</span>
+                                </li>
+                                <li class="flex items-start gap-3 bg-slate-900/70 p-3 rounded-xl border border-slate-800">
+                                    <i data-lucide="git-commit" class="w-5 h-5 text-blue-400 shrink-0 mt-0.5"></i>
+                                    <span><strong>Hai dải bìa mềm hoặc dây vải cũ:</strong> Làm hai khung xương đường – phosphate chạy song song.</span>
+                                </li>
+                                <li class="flex items-start gap-3 bg-slate-900/70 p-3 rounded-xl border border-slate-800">
+                                    <i data-lucide="link" class="w-5 h-5 text-teal-400 shrink-0 mt-0.5"></i>
+                                    <span><strong>Miếng dính gai Velcro:</strong> Dán ở đầu các thẻ base để tạo khớp nối tháo lắp linh hoạt.</span>
+                                </li>
+                                <li class="flex items-start gap-3 bg-slate-900/70 p-3 rounded-xl border border-slate-800">
+                                    <i data-lucide="disc" class="w-5 h-5 text-purple-400 shrink-0 mt-0.5"></i>
+                                    <span><strong>Ống hút giấy / nắp chai an toàn:</strong> Minh họa các phân tử đường (D) và phosphate (P).</span>
+                                </li>
+                                <li class="flex items-start gap-3 bg-slate-900/70 p-3 rounded-xl border border-slate-800">
+                                    <i data-lucide="layers" class="w-5 h-5 text-rose-400 shrink-0 mt-0.5"></i>
+                                    <span><strong>Đế carton và lõi giấy:</strong> Làm trục và giá trưng bày mô hình đứng vững.</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="space-y-2.5 pt-3 border-t border-slate-700/70 no-print">
+                            <button onclick="downloadBlueprintPNG()"
+                                class="w-full py-3 px-4 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold text-sm transition flex items-center justify-center gap-2">
+                                <i data-lucide="download" class="w-4 h-4"></i>
+                                <span>TẢI BẢN THIẾT KẾ PNG</span>
+                            </button>
+                            <button onclick="window.print()"
+                                class="w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 font-bold text-sm transition flex items-center justify-center gap-2">
+                                <i data-lucide="printer" class="w-4 h-4"></i>
+                                <span>IN BẢN THIẾT KẾ</span>
+                            </button>
+                            <div class="grid grid-cols-2 gap-2 pt-1">
+                                <button onclick="navigateTo(4)" class="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 font-bold text-xs transition">
+                                    XEM LẠI MÔ HÌNH 3D
+                                </button>
+                                <button onclick="navigateTo(6)" class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:brightness-110 text-white font-extrabold text-xs transition">
+                                    XEM KẾT QUẢ NHÓM →
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MÀN HÌNH 6: TỔNG KẾT KẾT QUẢ NHÓM (CHỨNG NHẬN) -->
+        <section id="screen-6" class="screen-section hidden flex-1 p-4 sm:p-8 flex items-center justify-center">
+            <div class="max-w-4xl w-full mx-auto space-y-6">
+                <div id="certificate-card" class="glass-panel rounded-3xl p-6 sm:p-10 border-2 border-teal-400/50 relative overflow-hidden shadow-2xl">
+                    <div class="absolute top-0 left-0 w-24 h-24 border-t-4 border-l-4 border-teal-400 rounded-tl-3xl pointer-events-none"></div>
+                    <div class="absolute top-0 right-0 w-24 h-24 border-t-4 border-r-4 border-blue-400 rounded-tr-3xl pointer-events-none"></div>
+                    <div class="absolute bottom-0 left-0 w-24 h-24 border-b-4 border-l-4 border-purple-400 rounded-bl-3xl pointer-events-none"></div>
+                    <div class="absolute bottom-0 right-0 w-24 h-24 border-b-4 border-r-4 border-teal-400 rounded-br-3xl pointer-events-none"></div>
+
+                    <div class="text-center space-y-3 border-b border-slate-700/80 pb-6">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-400 to-blue-600 text-slate-950 shadow-lg mb-1">
+                            <i data-lucide="award" class="w-9 h-9 stroke-[2.2]"></i>
+                        </div>
+                        <div class="text-xs font-bold uppercase tracking-[0.2em] text-teal-400">Bảo Tàng Di Truyền • Phòng Thí Nghiệm DNA Ảo</div>
+                        <h2 class="text-2xl sm:text-4xl font-extrabold text-white tracking-wide">CHỨNG NHẬN HOÀN THÀNH NHIỆM VỤ</h2>
+                    </div>
+
+                    <div class="py-6 space-y-6">
+                        <div class="text-center space-y-1">
+                            <div class="text-xs text-slate-400 uppercase font-semibold">Trao tặng nhóm nghiên cứu</div>
+                            <div id="cert-team-name" class="text-2xl sm:text-3xl font-extrabold text-teal-300">Nhóm 1</div>
+                            <div id="cert-team-sub" class="text-sm text-slate-300"></div>
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                            <div class="bg-slate-900/85 p-4 rounded-2xl border border-slate-700/80 text-center">
+                                <div class="text-xs text-slate-400 mb-1">Cặp base chính xác</div>
+                                <div class="text-xl sm:text-2xl font-extrabold text-emerald-400">8 / 8</div>
+                            </div>
+                            <div class="bg-slate-900/85 p-4 rounded-2xl border border-slate-700/80 text-center">
+                                <div class="text-xs text-slate-400 mb-1">Số lần kiểm tra</div>
+                                <div id="cert-checks" class="text-xl sm:text-2xl font-extrabold text-blue-400">1</div>
+                            </div>
+                            <div class="bg-slate-900/85 p-4 rounded-2xl border border-slate-700/80 text-center">
+                                <div class="text-xs text-slate-400 mb-1">Số lỗi đã sửa</div>
+                                <div id="cert-fixes" class="text-xl sm:text-2xl font-extrabold text-amber-400">0</div>
+                            </div>
+                            <div class="bg-slate-900/85 p-4 rounded-2xl border border-slate-700/80 text-center">
+                                <div class="text-xs text-slate-400 mb-1">Câu hỏi củng cố</div>
+                                <div id="cert-quiz" class="text-xl sm:text-2xl font-extrabold text-purple-400">3 / 3</div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 space-y-2 text-center">
+                            <div class="text-xs font-bold text-slate-400 uppercase">Trình tự DNA đã khôi phục thành công (<span id="cert-mode-label">Chế độ cơ bản</span>)</div>
+                            <div id="cert-dna-sequence" class="font-mono text-xs sm:text-sm font-bold text-white space-y-1"></div>
+                        </div>
+
+                        <div class="text-center space-y-3">
+                            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 font-extrabold text-xs sm:text-sm">
+                                <i data-lucide="check-circle" class="w-4 h-4"></i>
+                                <span>TRẠNG THÁI: HOÀN THÀNH XUẤT SẮC</span>
+                            </div>
+                            <p class="text-sm sm:text-base text-slate-200 max-w-2xl mx-auto leading-relaxed italic">
+                                "Chúc mừng nhóm <span id="cert-wish-team" class="font-bold text-teal-300">Nhóm 1</span>! Các em đã vận dụng thành công nguyên tắc bổ sung để giải mã DNA. Hãy tiếp tục phát huy tinh thần hợp tác, sáng tạo để chế tạo kiệt tác DNA từ vật liệu tái chế!"
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 no-print">
+                    <button onclick="downloadCertificatePNG()"
+                        class="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:brightness-110 text-slate-950 font-extrabold text-sm shadow-lg transition flex items-center justify-center gap-2">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>TẢI CHỨNG NHẬN PNG</span>
+                    </button>
+                    <button onclick="window.print()"
+                        class="py-3.5 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 font-bold text-sm transition flex items-center justify-center gap-2">
+                        <i data-lucide="printer" class="w-4 h-4"></i>
+                        <span>IN KẾT QUẢ</span>
+                    </button>
+                    <button onclick="startNewChallengeFromCert()"
+                        class="py-3.5 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-sm shadow-lg transition flex items-center justify-center gap-2">
+                        <i data-lucide="shuffle" class="w-4 h-4"></i>
+                        <span>THỰC HIỆN THỬ THÁCH MỚI</span>
+                    </button>
+                    <button onclick="navigateTo(1)"
+                        class="py-3.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 font-bold text-sm transition flex items-center justify-center gap-2">
+                        <i data-lucide="home" class="w-4 h-4"></i>
+                        <span>VỀ TRANG CHỦ</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL XÁC NHẬN & CHỈNH SỬA TÊN NHÓM -->
+    <div id="custom-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-md w-full p-6 space-y-5 border border-slate-600 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+                <h3 id="modal-title" class="font-extrabold text-lg text-white">Thông báo</h3>
+                <button onclick="closeCustomModal()" class="text-slate-400 hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div id="modal-body" class="text-sm text-slate-200 space-y-3"></div>
+            <div id="modal-footer" class="flex justify-end gap-3 pt-2"></div>
+        </div>
+    </div>
+
+    <script>
+        /* =========================================================================
+           1. QUẢN LÝ TRẠNG THÁI ỨNG DỤNG & LOCALSTORAGE
+        ========================================================================= */
+        const STORAGE_KEY = 'dna_virtual_lab_state_v1';
+        const COMPLEMENT_MAP = { 'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G' };
+        const BASIC_TEMPLATE = ['A', 'T', 'G', 'C', 'C', 'A', 'T', 'G'];
+
+        const QUIZ_QUESTIONS = [
+            {
+                id: 0,
+                question: "1. Trong phân tử DNA, nucleotide loại A liên kết bổ sung với nucleotide nào?",
+                options: ["Guanine (G)", "Thymine (T)", "Cytosine (C)", "Adenine (A)"],
+                correctIndex: 1,
+                explanation: "Chính xác! Theo nguyên tắc bổ sung, Adenine (A) luôn liên kết với Thymine (T) bằng 2 liên kết hydrogen."
+            },
+            {
+                id: 1,
+                question: "2. Hai mạch polynucleotide của phân tử DNA có chiều như thế nào?",
+                options: ["Cùng chiều 5′ → 3′", "Cùng chiều 3′ → 5′", "Ngược chiều nhau (5′→3′ và 3′→5′)", "Không xác định được chiều"],
+                correctIndex: 2,
+                explanation: "Rất tốt! Hai mạch của DNA chạy song song nhưng ngược chiều nhau: một mạch có chiều 5′→3′, mạch đối diện có chiều 3′→5′."
+            },
+            {
+                id: 2,
+                question: "3. Khung đường – phosphate nằm ở phía nào trong cấu trúc phân tử DNA?",
+                options: ["Nằm phía ngoài, bảo vệ các cặp base bên trong", "Nằm ở chính giữa trục xoắn", "Nằm xen kẽ giữa A và T", "Chỉ có ở một mạch duy nhất"],
+                correctIndex: 0,
+                explanation: "Hoàn toàn chính xác! Khung đường – phosphate tạo thành bộ khung vững chắc phía ngoài, còn các cặp base hướng vào phía trong."
+            }
+        ];
+
+        function resetSessionsDefault() {
+            appState.sessions = {
+                basic: {
+                    template: [...BASIC_TEMPLATE],
+                    userStrand: Array(8).fill(null),
+                    slotStatus: Array(8).fill('empty'),
+                    checkCount: 0,
+                    fixCount: 0,
+                    completed: false
+                },
+                challenge: {
+                    template: ['C', 'G', 'A', 'T', 'T', 'G', 'C', 'A'],
+                    userStrand: Array(8).fill(null),
+                    slotStatus: Array(8).fill('empty'),
+                    checkCount: 0,
+                    fixCount: 0,
+                    completed: false
+                }
+            };
+        }
+
+        let appState = {
+            currentScreen: 1,
+            teamName: '',
+            teamClass: '',
+            teamLeader: '',
+            soundEnabled: true,
+            mode: 'basic',
+            sessions: {
+                basic: {
+                    template: [...BASIC_TEMPLATE],
+                    userStrand: Array(8).fill(null),
+                    slotStatus: Array(8).fill('empty'),
+                    checkCount: 0,
+                    fixCount: 0,
+                    completed: false
+                },
+                challenge: {
+                    template: ['C', 'G', 'A', 'T', 'T', 'G', 'C', 'A'],
+                    userStrand: Array(8).fill(null),
+                    slotStatus: Array(8).fill('empty'),
+                    checkCount: 0,
+                    fixCount: 0,
+                    completed: false
+                }
+            },
+            quizAnswers: [null, null, null]
+        };
+
+        let selectedBankNuc = null;
+
+        /* =========================================================================
+           HỆ THỐNG ÂM THANH PHÒNG THÍ NGHIỆM (TONE.JS)
+        ========================================================================= */
+        const SoundFX = {
+            initialized: false,
+            synth: null,
+            polySynth: null,
+
+            async init() {
+                if (this.initialized || typeof Tone === 'undefined') return;
+                try {
+                    await Tone.start();
+                    this.synth = new Tone.Synth({
+                        oscillator: { type: 'sine' },
+                        envelope: { attack: 0.01, decay: 0.12, sustain: 0.05, release: 0.2 }
+                    }).toDestination();
+                    this.synth.volume.value = -8;
+
+                    this.polySynth = new Tone.PolySynth(Tone.Synth, {
+                        oscillator: { type: 'triangle' },
+                        envelope: { attack: 0.02, decay: 0.2, sustain: 0.1, release: 0.4 }
+                    }).toDestination();
+                    this.polySynth.volume.value = -8;
+
+                    this.initialized = true;
+                } catch (e) {
+                    console.warn('Không thể khởi tạo âm thanh:', e);
+                }
+            },
+
+            async play(type) {
+                if (!appState.soundEnabled || typeof Tone === 'undefined') return;
+                if (!this.initialized) await this.init();
+                if (!this.synth || !this.polySynth) return;
+
+                const now = Tone.now();
+                switch (type) {
+                    case 'click':
+                        this.synth.triggerAttackRelease('C5', '32n', now);
+                        break;
+                    case 'select':
+                        this.synth.triggerAttackRelease('E5', '32n', now);
+                        break;
+                    case 'place':
+                        this.synth.triggerAttackRelease('G4', '16n', now);
+                        this.synth.triggerAttackRelease('C5', '16n', now + 0.06);
+                        break;
+                    case 'remove':
+                        this.synth.triggerAttackRelease('E4', '16n', now);
+                        break;
+                    case 'wrong':
+                        this.synth.triggerAttackRelease('F3', '8n', now);
+                        this.synth.triggerAttackRelease('E3', '4n', now + 0.12);
+                        break;
+                    case 'success':
+                        this.polySynth.triggerAttackRelease(['C5', 'E5', 'G5'], '8n', now);
+                        this.polySynth.triggerAttackRelease(['E5', 'G5', 'C6'], '4n', now + 0.18);
+                        break;
+                    case 'helix':
+                        ['C4', 'E4', 'G4', 'B4', 'D5', 'G5'].forEach((note, i) => {
+                            this.synth.triggerAttackRelease(note, '32n', now + i * 0.055);
+                        });
+                        break;
+                }
+            }
+        };
+
+        function toggleSound() {
+            appState.soundEnabled = !appState.soundEnabled;
+            saveState();
+            updateSoundButtonUI();
+            if (appState.soundEnabled) SoundFX.play('click');
+        }
+
+        function updateSoundButtonUI() {
+            const btn = document.getElementById('btn-sound-toggle');
+            if (!btn) return;
+            btn.innerHTML = appState.soundEnabled
+                ? `<i data-lucide="volume-2" class="w-4 h-4"></i>`
+                : `<i data-lucide="volume-x" class="w-4 h-4 text-slate-500"></i>`;
+            lucide.createIcons();
+        }
+
+        function loadState() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    appState = { ...appState, ...parsed };
+                    if (!appState.sessions || !appState.sessions.basic || !appState.sessions.challenge) {
+                        resetSessionsDefault();
+                    }
+                }
+            } catch (e) {
+                console.warn('Không thể đọc localStorage:', e);
+            }
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+            } catch (e) {
+                console.warn('Không thể lưu localStorage:', e);
+            }
+        }
+
+        function getCurrentSession() {
+            return appState.sessions[appState.mode];
+        }
+
+        /* =========================================================================
+           2. ĐIỀU HƯỚNG GIỮA 6 MÀN HÌNH
+        ========================================================================= */
+        function navigateTo(screenNum) {
+            const session = getCurrentSession();
+
+            if (screenNum >= 4 && !session.completed) {
+                showToastModal(
+                    "Chưa mở khóa khu vực này",
+                    "Các em cần hoàn thành chính xác <strong>8/8 cặp base</strong> trên bàn thí nghiệm trước khi khám phá mô hình DNA 3D!"
+                );
+                return;
+            }
+
+            appState.currentScreen = screenNum;
+            saveState();
+
+            document.querySelectorAll('.screen-section').forEach(el => el.classList.add('hidden'));
+            const target = document.getElementById(`screen-${screenNum}`);
+            if (target) target.classList.remove('hidden');
+
+            const header = document.getElementById('app-header');
+            if (screenNum === 1) {
+                header.classList.add('hidden');
+            } else {
+                header.classList.remove('hidden');
+                updateHeaderUI();
+                updateSoundButtonUI();
+            }
+
+            if (screenNum === 1) {
+                document.getElementById('input-team-name').value = appState.teamName || '';
+                document.getElementById('input-team-class').value = appState.teamClass || '';
+                document.getElementById('input-team-leader').value = appState.teamLeader || '';
+            } else if (screenNum === 2) {
+                document.getElementById('guide-team-name').textContent = appState.teamName;
+            } else if (screenNum === 3) {
+                renderLabScreen();
+            } else if (screenNum === 4) {
+                initOrUpdate3DLab();
+                renderQuiz();
+            } else if (screenNum === 5) {
+                renderBlueprintScreen();
+            } else if (screenNum === 6) {
+                renderCertificateScreen();
+                SoundFX.play('success');
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            lucide.createIcons();
+        }
+
+        function updateHeaderUI() {
+            document.getElementById('header-team-name').textContent = appState.teamName;
+            const metaParts = [];
+            if (appState.teamClass) metaParts.push(appState.teamClass);
+            metaParts.push(appState.mode === 'basic' ? 'Chế độ cơ bản' : 'Chế độ thử thách');
+            document.getElementById('header-team-meta').textContent = metaParts.join(' • ');
+
+            const session = getCurrentSession();
+            document.querySelectorAll('.step-btn').forEach(btn => {
+                const step = parseInt(btn.dataset.step);
+                btn.classList.remove('bg-teal-500', 'text-slate-950', 'bg-slate-800', 'text-slate-300', 'opacity-40', 'cursor-not-allowed');
+                if (step === appState.currentScreen) {
+                    btn.classList.add('bg-teal-500', 'text-slate-950');
+                } else if (step >= 4 && !session.completed) {
+                    btn.classList.add('opacity-40', 'cursor-not-allowed', 'text-slate-400');
+                } else {
+                    btn.classList.add('bg-slate-800', 'text-slate-300', 'hover:bg-slate-700');
+                }
+            });
+        }
+
+        /* =========================================================================
+           3. MÀN HÌNH 1: XỬ LÝ NHẬP TÊN NHÓM & CHỈNH SỬA TÊN NHÓM
+        ========================================================================= */
+        function handleStartJourney() {
+            const nameInput = document.getElementById('input-team-name').value.trim();
+            const classInput = document.getElementById('input-team-class').value.trim();
+            const leaderInput = document.getElementById('input-team-leader').value.trim();
+            const errorEl = document.getElementById('team-name-error');
+
+            if (!nameInput) {
+                errorEl.classList.remove('hidden');
+                document.getElementById('input-team-name').focus();
+                SoundFX.play('wrong');
+                return;
+            }
+
+            errorEl.classList.add('hidden');
+            SoundFX.play('success');
+            appState.teamName = nameInput;
+            appState.teamClass = classInput;
+            appState.teamLeader = leaderInput;
+            saveState();
+            navigateTo(2);
+        }
+
+        function openEditTeamModal() {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('modal-title').textContent = "Thay đổi thông tin nhóm";
+            document.getElementById('modal-body').innerHTML = `
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Tên nhóm *</label>
+                        <input type="text" id="modal-team-name" value="${escapeHtml(appState.teamName)}"
+                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-600 text-white text-sm focus:border-teal-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Lớp</label>
+                        <input type="text" id="modal-team-class" value="${escapeHtml(appState.teamClass)}" placeholder="Ví dụ: Lớp 9A1"
+                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-600 text-white text-sm focus:border-teal-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Tên đội trưởng</label>
+                        <input type="text" id="modal-team-leader" value="${escapeHtml(appState.teamLeader)}"
+                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-600 text-white text-sm focus:border-teal-400 outline-none">
+                    </div>
+                    <p id="modal-edit-error" class="hidden text-xs text-rose-400 font-semibold">Vui lòng không để trống tên nhóm!</p>
+                </div>
+            `;
+            document.getElementById('modal-footer').innerHTML = `
+                <button onclick="closeCustomModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold">Hủy</button>
+                <button onclick="saveEditedTeam()" class="px-5 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-extrabold">Lưu thay đổi</button>
+            `;
+            modal.classList.remove('hidden');
+        }
+
+        function saveEditedTeam() {
+            const newName = document.getElementById('modal-team-name').value.trim();
+            if (!newName) {
+                document.getElementById('modal-edit-error').classList.remove('hidden');
+                return;
+            }
+            appState.teamName = newName;
+            appState.teamClass = document.getElementById('modal-team-class').value.trim();
+            appState.teamLeader = document.getElementById('modal-team-leader').value.trim();
+            saveState();
+            closeCustomModal();
+            updateHeaderUI();
+            if (appState.currentScreen === 2) document.getElementById('guide-team-name').textContent = appState.teamName;
+            if (appState.currentScreen === 3) document.getElementById('panel-team-name').textContent = appState.teamName;
+            if (appState.currentScreen === 5) renderBlueprintScreen();
+            if (appState.currentScreen === 6) renderCertificateScreen();
+        }
+
+        /* =========================================================================
+           4. MÀN HÌNH 3: BÀN THÍ NGHIỆM LẮP GHÉP DNA
+        ========================================================================= */
+        function renderLabScreen() {
+            const session = getCurrentSession();
+            document.getElementById('panel-team-name').textContent = appState.teamName;
+            document.getElementById('panel-mission-name').textContent =
+                appState.mode === 'basic' ? 'Khôi phục đoạn DNA mẫu (8 cặp)' : 'Giải mã đoạn DNA thử thách ngẫu nhiên';
+            document.getElementById('lab-mode-badge').textContent =
+                appState.mode === 'basic' ? 'Chế độ cơ bản' : 'Chế độ thử thách';
+
+            const btnBasic = document.getElementById('btn-mode-basic');
+            const btnChall = document.getElementById('btn-mode-challenge');
+            if (appState.mode === 'basic') {
+                btnBasic.className = "py-2 px-2 rounded-xl text-xs font-extrabold bg-blue-600 text-white border border-blue-400";
+                btnChall.className = "py-2 px-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 border border-slate-600 hover:bg-slate-700";
+            } else {
+                btnChall.className = "py-2 px-2 rounded-xl text-xs font-extrabold bg-purple-600 text-white border border-purple-400";
+                btnBasic.className = "py-2 px-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 border border-slate-600 hover:bg-slate-700";
+            }
+
+            const filledCount = session.userStrand.filter(n => n !== null).length;
+            document.getElementById('panel-progress-text').textContent = `${filledCount} / 8`;
+            document.getElementById('panel-progress-bar').style.width = `${(filledCount / 8) * 100}%`;
+            document.getElementById('stat-checks').textContent = session.checkCount;
+            document.getElementById('stat-fixes').textContent = session.fixCount;
+
+            const container = document.getElementById('dna-ladder-container');
+            container.innerHTML = '';
+
+            session.template.forEach((templateBase, idx) => {
+                const userBase = session.userStrand[idx];
+                const status = session.slotStatus[idx];
+
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between gap-2 sm:gap-4 relative py-1';
+
+                const leftSide = `
+                    <div class="flex items-center gap-2 sm:gap-3 flex-1 justify-end">
+                        <div class="flex items-center gap-1.5 text-[11px] font-bold text-slate-400">
+                            <span class="w-6 h-6 rounded-full bg-indigo-500/20 border border-indigo-400/50 text-indigo-300 flex items-center justify-center">P</span>
+                            <span class="w-6 h-6 rounded bg-teal-500/20 border border-teal-400/50 text-teal-300 flex items-center justify-center">D</span>
+                        </div>
+                        <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl nuc-badge-${templateBase} font-black text-xl sm:text-2xl flex items-center justify-center shadow-md select-none">
+                            ${templateBase}
+                        </div>
+                    </div>
+                `;
+
+                let bondHtml = `<div class="w-10 sm:w-16 flex flex-col items-center justify-center gap-1">`;
+                if (userBase) {
+                    const bondColor = status === 'correct' ? 'border-emerald-400' : (status === 'wrong' ? 'border-rose-500' : 'border-teal-400/70');
+                    bondHtml += `
+                        <div class="w-full border-t-2 border-dashed ${bondColor} transition-all"></div>
+                        <div class="w-full border-t-2 border-dashed ${bondColor} transition-all"></div>
+                        ${(templateBase === 'G' || templateBase === 'C') ? `<div class="w-full border-t-2 border-dashed ${bondColor} transition-all"></div>` : ''}
+                    `;
+                } else {
+                    bondHtml += `<span class="text-xs text-slate-600 font-mono">•••</span>`;
+                }
+                bondHtml += `</div>`;
+
+                let slotClasses = "w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center font-black text-xl sm:text-2xl transition-all cursor-pointer relative select-none ";
+                let slotContent = "?";
+                let badgeIcon = "";
+
+                if (!userBase) {
+                    slotClasses += "bg-slate-900/90 border-2 border-dashed border-slate-500 hover:border-teal-400 text-slate-500";
+                    if (selectedBankNuc) {
+                        slotClasses += " ring-2 ring-teal-400/50 bg-teal-950/30";
+                    }
+                } else {
+                    slotClasses += `nuc-badge-${userBase} shadow-md`;
+                    slotContent = userBase;
+
+                    if (status === 'correct') {
+                        slotClasses += " ring-4 ring-emerald-400";
+                        badgeIcon = `<span class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center shadow"><i data-lucide="check" class="w-4 h-4 stroke-[3]"></i></span>`;
+                    } else if (status === 'wrong') {
+                        slotClasses += " ring-4 ring-rose-500 animate-shake";
+                        badgeIcon = `<span class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-rose-500 text-white flex items-center justify-center shadow"><i data-lucide="x" class="w-4 h-4 stroke-[3]"></i></span>`;
+                    }
+                }
+
+                const rightSide = `
+                    <div class="flex items-center gap-2 sm:gap-3 flex-1 justify-start">
+                        <div id="dna-slot-${idx}"
+                            data-slot-idx="${idx}"
+                            onclick="handleSlotClick(${idx})"
+                            ondragover="handleDragOver(event)"
+                            ondragleave="handleDragLeave(event)"
+                            ondrop="handleDrop(event, ${idx})"
+                            class="${slotClasses}">
+                            ${slotContent}
+                            ${badgeIcon}
+                        </div>
+
+                        ${userBase ? `
+                            <button onclick="removeSlotNucleotide(${idx})" title="Xóa nucleotide này"
+                                class="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-300 border border-slate-700 transition">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        ` : `<div class="w-7"></div>`}
+
+                        <div class="hidden sm:flex items-center gap-1.5 text-[11px] font-bold text-slate-400">
+                            <span class="w-6 h-6 rounded bg-teal-500/20 border border-teal-400/50 text-teal-300 flex items-center justify-center">D</span>
+                            <span class="w-6 h-6 rounded-full bg-indigo-500/20 border border-indigo-400/50 text-indigo-300 flex items-center justify-center">P</span>
+                        </div>
+                    </div>
+                `;
+
+                row.innerHTML = leftSide + bondHtml + rightSide;
+                container.appendChild(row);
+            });
+
+            const ctaEl = document.getElementById('lab-success-cta');
+            if (session.completed) {
+                ctaEl.classList.remove('hidden');
+            } else {
+                ctaEl.classList.add('hidden');
+            }
+
+            lucide.createIcons();
+        }
+
+        function setupBankDragEvents() {
+            document.querySelectorAll('.bank-card').forEach(card => {
+                card.addEventListener('dragstart', (e) => {
+                    const nuc = card.dataset.nuc;
+                    e.dataTransfer.setData('text/plain', nuc);
+                    selectBankNucleotide(nuc, true);
+                });
+            });
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('scale-105', 'border-teal-300');
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('scale-105', 'border-teal-300');
+        }
+
+        function handleDrop(e, slotIdx) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('scale-105', 'border-teal-300');
+            const nuc = e.dataTransfer.getData('text/plain') || selectedBankNuc;
+            if (nuc) {
+                placeNucleotideAt(slotIdx, nuc);
+            }
+        }
+
+        function selectBankNucleotide(nuc, keepIfSame = false) {
+            SoundFX.play('select');
+            if (!keepIfSame && selectedBankNuc === nuc) {
+                selectedBankNuc = null;
+            } else {
+                selectedBankNuc = nuc;
+            }
+
+            document.querySelectorAll('.bank-card').forEach(card => {
+                if (card.dataset.nuc === selectedBankNuc) {
+                    card.classList.add('nuc-selected-ring');
+                } else {
+                    card.classList.remove('nuc-selected-ring');
+                }
+            });
+
+            const indicator = document.getElementById('selected-nuc-indicator');
+            if (selectedBankNuc) {
+                indicator.classList.remove('hidden');
+                document.getElementById('selected-nuc-label').textContent = selectedBankNuc;
+            } else {
+                indicator.classList.add('hidden');
+            }
+
+            renderLabScreen();
+        }
+
+        function handleSlotClick(slotIdx) {
+            const session = getCurrentSession();
+            if (selectedBankNuc) {
+                placeNucleotideAt(slotIdx, selectedBankNuc);
+            } else if (session.userStrand[slotIdx]) {
+                const order = ['A', 'T', 'G', 'C'];
+                const nextNuc = order[(order.indexOf(session.userStrand[slotIdx]) + 1) % 4];
+                placeNucleotideAt(slotIdx, nextNuc);
+            } else {
+                showLabFeedback('info', 'Hướng dẫn thao tác', 'Em hãy kéo một thẻ nucleotide (A, T, G, C) ở cột bên trái vào ô này, hoặc chạm chọn thẻ ở cột bên trái rồi chạm vào ô trống nhé!');
+            }
+        }
+
+        function placeNucleotideAt(slotIdx, nuc) {
+            const session = getCurrentSession();
+            const prevStatus = session.slotStatus[slotIdx];
+            const prevNuc = session.userStrand[slotIdx];
+
+            if (prevStatus === 'wrong' && prevNuc !== nuc) {
+                const expected = COMPLEMENT_MAP[session.template[slotIdx]];
+                if (nuc === expected) {
+                    session.fixCount += 1;
+                }
+            }
+
+            session.userStrand[slotIdx] = nuc;
+            session.slotStatus[slotIdx] = 'placed';
+            session.completed = false;
+            SoundFX.play('place');
+            saveState();
+            renderLabScreen();
+        }
+
+        function removeSlotNucleotide(slotIdx) {
+            const session = getCurrentSession();
+            session.userStrand[slotIdx] = null;
+            session.slotStatus[slotIdx] = 'empty';
+            session.completed = false;
+            SoundFX.play('remove');
+            saveState();
+            renderLabScreen();
+        }
+
+        function checkDnaResult() {
+            const session = getCurrentSession();
+            const hasEmpty = session.userStrand.some(n => n === null);
+
+            if (hasEmpty) {
+                SoundFX.play('wrong');
+                showLabFeedback(
+                    'warning',
+                    'Chưa hoàn thành lắp ghép!',
+                    'Nhóm của em chưa hoàn thành tất cả các vị trí. Hãy tiếp tục lắp ghép nhé!'
+                );
+                return;
+            }
+
+            session.checkCount += 1;
+            let wrongCount = 0;
+            let firstWrongExample = null;
+
+            session.template.forEach((templateBase, idx) => {
+                const expected = COMPLEMENT_MAP[templateBase];
+                const actual = session.userStrand[idx];
+                if (actual === expected) {
+                    session.slotStatus[idx] = 'correct';
+                } else {
+                    session.slotStatus[idx] = 'wrong';
+                    wrongCount++;
+                    if (!firstWrongExample) {
+                        firstWrongExample = { pos: idx + 1, templateBase, actual };
+                    }
+                }
+            });
+
+            if (wrongCount === 0) {
+                session.completed = true;
+                saveState();
+                renderLabScreen();
+                updateHeaderUI();
+                SoundFX.play('success');
+                showLabFeedback(
+                    'success',
+                    `CHÚC MỪNG NHÓM ${appState.teamName.toUpperCase()}! CÁC EM ĐÃ KHÔI PHỤC THÀNH CÔNG MẠCH DNA!`,
+                    'Kết quả: 8/8 cặp base chính xác tuyệt đối theo nguyên tắc bổ sung (A–T, G–C). Hãy nhấn nút bên dưới để khám phá mô hình DNA xoắn kép 3D!'
+                );
+            } else {
+                session.completed = false;
+                saveState();
+                renderLabScreen();
+                SoundFX.play('wrong');
+                showLabFeedback(
+                    'error',
+                    'Phát hiện cặp base chưa đúng! Hãy kiểm tra lại nguyên tắc bổ sung.',
+                    `Vị trí số ${firstWrongExample.pos} (đặt ${firstWrongExample.actual} đối diện ${firstWrongExample.templateBase}) chưa đúng nguyên tắc bổ sung. Em hãy thử lại!`
+                );
+            }
+        }
+
+        function showHint() {
+            SoundFX.play('click');
+            showLabFeedback(
+                'hint',
+                'Gợi ý kiến thức khoa học',
+                'Theo nguyên tắc bổ sung trong phân tử DNA: Adenine (A) luôn ghép bổ sung với Thymine (T); Guanine (G) luôn ghép bổ sung với Cytosine (C).'
+            );
+        }
+
+        function clearWrongSlots() {
+            const session = getCurrentSession();
+            let cleared = 0;
+            session.slotStatus.forEach((st, idx) => {
+                if (st === 'wrong') {
+                    session.userStrand[idx] = null;
+                    session.slotStatus[idx] = 'empty';
+                    cleared++;
+                }
+            });
+            saveState();
+            renderLabScreen();
+            if (cleared > 0) {
+                showLabFeedback('info', 'Đã dọn dẹp các vị trí sai', `Đã xóa ${cleared} nucleotide ghép sai để các em lắp ghép lại.`);
+            } else {
+                showLabFeedback('info', 'Không có ô đánh dấu sai', 'Hiện chưa có vị trí nào bị đánh dấu sai. Hãy nhấn "KIỂM TRA KẾT QUẢ" sau khi lắp đủ 8 vị trí.');
+            }
+        }
+
+        function confirmResetLab() {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('modal-title').textContent = "Xác nhận làm lại thí nghiệm";
+            document.getElementById('modal-body').innerHTML = `
+                <p>Các em có chắc chắn muốn xóa toàn bộ các nucleotide đã lắp trên bàn thí nghiệm để làm lại từ đầu không?</p>
+                <p class="text-xs text-slate-400">(Tên nhóm <strong>${escapeHtml(appState.teamName)}</strong> vẫn được giữ nguyên).</p>
+            `;
+            document.getElementById('modal-footer').innerHTML = `
+                <button onclick="closeCustomModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold">Hủy bỏ</button>
+                <button onclick="executeResetLab()" class="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-extrabold">Đồng ý làm lại</button>
+            `;
+            modal.classList.remove('hidden');
+        }
+
+        function executeResetLab() {
+            const session = getCurrentSession();
+            session.userStrand = Array(8).fill(null);
+            session.slotStatus = Array(8).fill('empty');
+            session.completed = false;
+            saveState();
+            closeCustomModal();
+            document.getElementById('lab-feedback-box').classList.add('hidden');
+            renderLabScreen();
+            updateHeaderUI();
+        }
+
+        function switchMode(newMode) {
+            if (newMode === 'challenge') {
+                const bases = ['A', 'T', 'G', 'C'];
+                const randomSeq = Array.from({ length: 8 }, () => bases[Math.floor(Math.random() * 4)]);
+                appState.sessions.challenge = {
+                    template: randomSeq,
+                    userStrand: Array(8).fill(null),
+                    slotStatus: Array(8).fill('empty'),
+                    checkCount: 0,
+                    fixCount: 0,
+                    completed: false
+                };
+            }
+            appState.mode = newMode;
+            saveState();
+            document.getElementById('lab-feedback-box').classList.add('hidden');
+            renderLabScreen();
+            updateHeaderUI();
+        }
+
+        function startNewChallengeFromCert() {
+            switchMode('challenge');
+            navigateTo(3);
+        }
+
+        function showLabFeedback(type, title, desc) {
+            const box = document.getElementById('lab-feedback-box');
+            const iconEl = document.getElementById('lab-feedback-icon');
+            const titleEl = document.getElementById('lab-feedback-title');
+            const descEl = document.getElementById('lab-feedback-desc');
+
+            box.className = "rounded-2xl p-4 border transition-all ";
+            if (type === 'success') {
+                box.className += "bg-emerald-950/70 border-emerald-400 text-emerald-100";
+                iconEl.innerHTML = `<i data-lucide="party-popper" class="w-6 h-6 text-emerald-400"></i>`;
+            } else if (type === 'error') {
+                box.className += "bg-rose-950/70 border-rose-500 text-rose-100";
+                iconEl.innerHTML = `<i data-lucide="alert-triangle" class="w-6 h-6 text-rose-400"></i>`;
+            } else if (type === 'warning') {
+                box.className += "bg-amber-950/70 border-amber-400 text-amber-100";
+                iconEl.innerHTML = `<i data-lucide="alert-circle" class="w-6 h-6 text-amber-400"></i>`;
+            } else if (type === 'hint') {
+                box.className += "bg-teal-950/70 border-teal-400 text-teal-100";
+                iconEl.innerHTML = `<i data-lucide="lightbulb" class="w-6 h-6 text-teal-400"></i>`;
+            } else {
+                box.className += "bg-blue-950/70 border-blue-400 text-blue-100";
+                iconEl.innerHTML = `<i data-lucide="info" class="w-6 h-6 text-blue-400"></i>`;
+            }
+
+            titleEl.textContent = title;
+            descEl.textContent = desc;
+            box.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        /* =========================================================================
+           5. MÀN HÌNH 4: MÔ HÌNH DNA 3D TƯƠNG TÁC (THREE.JS) & CÂU HỎI CỦNG CỐ
+        ========================================================================= */
+        let scene3D, camera3D, renderer3D, dnaGroup3D;
+        let strand1BackboneMesh, strand2BackboneMesh;
+        let isHelixMode = false;
+        let twistProgress = 0;
+        let autoRotate3D = true;
+        let basePairMeshes = [];
+        let animFrame3D = null;
+
+        const NUC_HEX = {
+            'A': 0xF43F5E,
+            'T': 0xFACC15,
+            'G': 0x3B82F6,
+            'C': 0x10B981
+        };
+
+        function createTextSprite(text, bgColor, textColor = '#FFFFFF') {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = bgColor;
+            ctx.beginPath();
+            ctx.arc(64, 64, 52, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 6;
+            ctx.stroke();
+
+            ctx.fillStyle = textColor;
+            ctx.font = 'bold 54px "Be Vietnam Pro", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, 64, 68);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(0.75, 0.75, 1);
+            return sprite;
+        }
+
+        function initOrUpdate3DLab() {
+            const container = document.getElementById('dna-3d-canvas-container');
+            if (!renderer3D) {
+                scene3D = new THREE.Scene();
+                camera3D = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+                camera3D.position.set(0, 0, 16);
+
+                renderer3D = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer3D.setSize(container.clientWidth, container.clientHeight);
+                renderer3D.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                container.appendChild(renderer3D.domElement);
+
+                const ambient = new THREE.AmbientLight(0xffffff, 0.85);
+                scene3D.add(ambient);
+                const dirLight1 = new THREE.DirectionalLight(0x2dd4bf, 0.9);
+                dirLight1.position.set(10, 15, 10);
+                scene3D.add(dirLight1);
+                const dirLight2 = new THREE.DirectionalLight(0xa78bfa, 0.7);
+                dirLight2.position.set(-10, -10, 10);
+                scene3D.add(dirLight2);
+
+                setup3DInteraction(container);
+                window.addEventListener('resize', onResize3D);
+            }
+
+            isHelixMode = false;
+            twistProgress = 0;
+            updateHelixButtonUI();
+
+            buildDna3DModel();
+            if (!animFrame3D) animate3DLoop();
+        }
+
+        function buildDna3DModel() {
+            if (dnaGroup3D) scene3D.remove(dnaGroup3D);
+            dnaGroup3D = new THREE.Group();
+            basePairMeshes = [];
+
+            const session = getCurrentSession();
+            const count = 8;
+            const spacingY = 1.25;
+            const startY = ((count - 1) * spacingY) / 2;
+            const radius = 2.5;
+
+            for (let i = 0; i < count; i++) {
+                const base1 = session.template[i];
+                const base2 = COMPLEMENT_MAP[base1];
+                const y = startY - i * spacingY;
+
+                const pairGroup = new THREE.Group();
+                pairGroup.position.y = y;
+                pairGroup.userData = { index: i, base1, base2 };
+
+                const sugarGeo = new THREE.SphereGeometry(0.32, 20, 20);
+                const matSugar1 = new THREE.MeshStandardMaterial({ color: 0x3B82F6, roughness: 0.3, metalness: 0.2 });
+                const sphere1 = new THREE.Mesh(sugarGeo, matSugar1);
+                sphere1.position.x = -radius;
+
+                const matSugar2 = new THREE.MeshStandardMaterial({ color: 0xA78BFA, roughness: 0.3, metalness: 0.2 });
+                const sphere2 = new THREE.Mesh(sugarGeo, matSugar2);
+                sphere2.position.x = radius;
+
+                const baseGeo = new THREE.CylinderGeometry(0.18, 0.18, 1.85, 16);
+                baseGeo.rotateZ(Math.PI / 2);
+
+                const matBase1 = new THREE.MeshStandardMaterial({ color: NUC_HEX[base1], roughness: 0.35 });
+                const meshBase1 = new THREE.Mesh(baseGeo, matBase1);
+                meshBase1.position.x = -1.45;
+                meshBase1.userData = { index: i, base1, base2 };
+
+                const matBase2 = new THREE.MeshStandardMaterial({ color: NUC_HEX[base2], roughness: 0.35 });
+                const meshBase2 = new THREE.Mesh(baseGeo, matBase2);
+                meshBase2.position.x = 1.45;
+                meshBase2.userData = { index: i, base1, base2 };
+
+                const hexStr1 = '#' + NUC_HEX[base1].toString(16).padStart(6, '0');
+                const hexStr2 = '#' + NUC_HEX[base2].toString(16).padStart(6, '0');
+                const label1 = createTextSprite(base1, hexStr1, base1 === 'T' ? '#0F172A' : '#FFFFFF');
+                label1.position.set(-1.45, 0.45, 0);
+
+                const label2 = createTextSprite(base2, hexStr2, base2 === 'T' ? '#0F172A' : '#FFFFFF');
+                label2.position.set(1.45, 0.45, 0);
+
+                const isGC = (base1 === 'G' || base1 === 'C');
+                const bondOffsets = isGC ? [-0.22, 0, 0.22] : [-0.14, 0.14];
+                const bondMat = new THREE.MeshStandardMaterial({
+                    color: 0x2DD4BF,
+                    emissive: 0x14B8A6,
+                    emissiveIntensity: 0.6
+                });
+
+                bondOffsets.forEach(zOff => {
+                    for (let dotX = -0.32; dotX <= 0.32; dotX += 0.32) {
+                        const dotGeo = new THREE.SphereGeometry(0.065, 10, 10);
+                        const dotMesh = new THREE.Mesh(dotGeo, bondMat);
+                        dotMesh.position.set(dotX, zOff, 0);
+                        pairGroup.add(dotMesh);
+                    }
+                });
+
+                pairGroup.add(sphere1, sphere2, meshBase1, meshBase2, label1, label2);
+                dnaGroup3D.add(pairGroup);
+                basePairMeshes.push(meshBase1, meshBase2);
+            }
+
+            const topY = startY + 0.85;
+            const botY = -startY - 0.85;
+
+            const tag5Top = createTextSprite("5'", "#2563EB");
+            tag5Top.position.set(-radius, topY, 0);
+            const tag3Bot = createTextSprite("3'", "#2563EB");
+            tag3Bot.position.set(-radius, botY, 0);
+
+            const tag3Top = createTextSprite("3'", "#7C3AED");
+            tag3Top.position.set(radius, topY, 0);
+            const tag5Bot = createTextSprite("5'", "#7C3AED");
+            tag5Bot.position.set(radius, botY, 0);
+
+            dnaGroup3D.add(tag5Top, tag3Bot, tag3Top, tag5Bot);
+            updateBackboneRibbons(0);
+            scene3D.add(dnaGroup3D);
+        }
+
+        function updateBackboneRibbons(twist) {
+            if (strand1BackboneMesh) {
+                dnaGroup3D.remove(strand1BackboneMesh);
+                strand1BackboneMesh.geometry.dispose();
+            }
+            if (strand2BackboneMesh) {
+                dnaGroup3D.remove(strand2BackboneMesh);
+                strand2BackboneMesh.geometry.dispose();
+            }
+
+            const count = 8;
+            const spacingY = 1.25;
+            const startY = ((count - 1) * spacingY) / 2;
+            const radius = 2.5;
+            const pts1 = [];
+            const pts2 = [];
+
+            const steps = 40;
+            for (let s = 0; s <= steps; s++) {
+                const t = (s / steps) * (count - 1);
+                const y = startY - t * spacingY;
+                const angle = -(t - 3.5) * 0.628 * twist;
+
+                const x1 = -radius * Math.cos(angle);
+                const z1 = radius * Math.sin(angle);
+                pts1.push(new THREE.Vector3(x1, y, z1));
+
+                const x2 = radius * Math.cos(angle);
+                const z2 = -radius * Math.sin(angle);
+                pts2.push(new THREE.Vector3(x2, y, z2));
+            }
+
+            const curve1 = new THREE.CatmullRomCurve3(pts1);
+            const tubeGeo1 = new THREE.TubeGeometry(curve1, 64, 0.14, 12, false);
+            const tubeMat1 = new THREE.MeshStandardMaterial({ color: 0x3B82F6, roughness: 0.3, metalness: 0.2 });
+            strand1BackboneMesh = new THREE.Mesh(tubeGeo1, tubeMat1);
+
+            const curve2 = new THREE.CatmullRomCurve3(pts2);
+            const tubeGeo2 = new THREE.TubeGeometry(curve2, 64, 0.14, 12, false);
+            const tubeMat2 = new THREE.MeshStandardMaterial({ color: 0xA78BFA, roughness: 0.3, metalness: 0.2 });
+            strand2BackboneMesh = new THREE.Mesh(tubeGeo2, tubeMat2);
+
+            dnaGroup3D.add(strand1BackboneMesh, strand2BackboneMesh);
+        }
+
+        function animate3DLoop() {
+            animFrame3D = requestAnimationFrame(animate3DLoop);
+            if (!renderer3D || !dnaGroup3D) return;
+
+            const targetTwist = isHelixMode ? 1 : 0;
+            const diff = targetTwist - twistProgress;
+
+            if (Math.abs(diff) > 0.001) {
+                twistProgress += diff * 0.07;
+
+                dnaGroup3D.children.forEach((child) => {
+                    if (child.userData && typeof child.userData.index === 'number') {
+                        const idx = child.userData.index;
+                        child.rotation.y = -(idx - 3.5) * 0.628 * twistProgress;
+                    }
+                });
+
+                const radius = 2.5;
+                const angleTop = -(-0.5 - 3.5) * 0.628 * twistProgress;
+                const angleBot = -(7.5 - 3.5) * 0.628 * twistProgress;
+
+                const tag5Top = dnaGroup3D.children[8];
+                const tag3Bot = dnaGroup3D.children[9];
+                const tag3Top = dnaGroup3D.children[10];
+                const tag5Bot = dnaGroup3D.children[11];
+
+                if (tag5Top && tag3Bot && tag3Top && tag5Bot) {
+                    tag5Top.position.x = -radius * Math.cos(angleTop);
+                    tag5Top.position.z = radius * Math.sin(angleTop);
+
+                    tag3Bot.position.x = -radius * Math.cos(angleBot);
+                    tag3Bot.position.z = radius * Math.sin(angleBot);
+
+                    tag3Top.position.x = radius * Math.cos(angleTop);
+                    tag3Top.position.z = -radius * Math.sin(angleTop);
+
+                    tag5Bot.position.x = radius * Math.cos(angleBot);
+                    tag5Bot.position.z = -radius * Math.sin(angleBot);
+                }
+
+                updateBackboneRibbons(twistProgress);
+            }
+
+            if (autoRotate3D) {
+                dnaGroup3D.rotation.y += 0.008;
+            }
+
+            renderer3D.render(scene3D, camera3D);
+        }
+
+        function toggleDnaHelix() {
+            isHelixMode = !isHelixMode;
+            SoundFX.play('helix');
+            updateHelixButtonUI();
+        }
+
+        function updateHelixButtonUI() {
+            const textEl = document.getElementById('text-toggle-helix');
+            textEl.textContent = isHelixMode ? 'TRỞ VỀ DẠNG THANG PHẲNG' : 'TẠO XOẮN KÉP';
+        }
+
+        function toggleAutoRotate() {
+            autoRotate3D = !autoRotate3D;
+            document.getElementById('text-spin').textContent = autoRotate3D ? 'Tự xoay: BẬT' : 'Tự xoay: TẮT';
+        }
+
+        function zoom3D(factor) {
+            if (!camera3D) return;
+            camera3D.position.z = Math.max(7, Math.min(25, camera3D.position.z * factor));
+        }
+
+        function resetCamera3D() {
+            if (!camera3D || !dnaGroup3D) return;
+            camera3D.position.set(0, 0, 15);
+            dnaGroup3D.rotation.set(0, 0, 0);
+        }
+
+        function onResize3D() {
+            const container = document.getElementById('dna-3d-canvas-container');
+            if (!container || !renderer3D || !camera3D) return;
+            if (container.clientWidth === 0) return;
+            camera3D.aspect = container.clientWidth / container.clientHeight;
+            camera3D.updateProjectionMatrix();
+            renderer3D.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function setup3DInteraction(container) {
+            let isDragging = false;
+            let prevX = 0, prevY = 0;
+            let downX = 0, downY = 0;
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+
+            const onPointerDown = (x, y) => {
+                isDragging = true;
+                prevX = downX = x;
+                prevY = downY = y;
+            };
+
+            const onPointerMove = (x, y) => {
+                if (!isDragging || !dnaGroup3D) return;
+                const dx = x - prevX;
+                const dy = y - prevY;
+                dnaGroup3D.rotation.y += dx * 0.01;
+                dnaGroup3D.rotation.x = Math.max(-0.8, Math.min(0.8, dnaGroup3D.rotation.x + dy * 0.008));
+                prevX = x;
+                prevY = y;
+            };
+
+            const onPointerUp = (x, y) => {
+                isDragging = false;
+                if (Math.hypot(x - downX, y - downY) < 6) {
+                    const rect = container.getBoundingClientRect();
+                    mouse.x = ((x - rect.left) / rect.width) * 2 - 1;
+                    mouse.y = -((y - rect.top) / rect.height) * 2 + 1;
+                    raycaster.setFromCamera(mouse, camera3D);
+                    const intersects = raycaster.intersectObjects(basePairMeshes);
+                    if (intersects.length > 0) {
+                        const data = intersects[0].object.userData;
+                        showBasePairInspector(data);
+                    }
+                }
+            };
+
+            container.addEventListener('mousedown', e => onPointerDown(e.clientX, e.clientY));
+            window.addEventListener('mousemove', e => onPointerMove(e.clientX, e.clientY));
+            window.addEventListener('mouseup', e => { if (isDragging) onPointerUp(e.clientX, e.clientY); });
+
+            container.addEventListener('touchstart', e => {
+                if (e.touches.length === 1) onPointerDown(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: true });
+            container.addEventListener('touchmove', e => {
+                if (e.touches.length === 1) onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: true });
+            container.addEventListener('touchend', e => {
+                if (e.changedTouches.length === 1) onPointerUp(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+            });
+
+            container.addEventListener('wheel', e => {
+                e.preventDefault();
+                zoom3D(e.deltaY > 0 ? 1.08 : 0.92);
+            }, { passive: false });
+        }
+
+        function showBasePairInspector(data) {
+            const box = document.getElementById('base-pair-inspector');
+            const title = document.getElementById('inspector-title');
+            const desc = document.getElementById('inspector-desc');
+            const isAT = (data.base1 === 'A' || data.base1 === 'T');
+
+            title.textContent = `Cặp base số ${data.index + 1}: ${data.base1} – ${data.base2}`;
+            desc.textContent = isAT
+                ? `Adenine (A) liên kết bổ sung với Thymine (T) bằng 2 liên kết hydrogen. Hai base hướng vào trong khung đường–phosphate.`
+                : `Guanine (G) liên kết bổ sung với Cytosine (C) bằng 3 liên kết hydrogen. Hai base hướng vào trong khung đường–phosphate.`;
+            box.classList.remove('hidden');
+        }
+
+        function renderQuiz() {
+            const container = document.getElementById('quiz-container');
+            container.innerHTML = '';
+
+            QUIZ_QUESTIONS.forEach((q, qIdx) => {
+                const userAns = appState.quizAnswers[qIdx];
+                const isAnswered = userAns !== null;
+                const isCorrect = userAns === q.correctIndex;
+
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900/80 p-3.5 rounded-2xl border border-slate-700/80 space-y-2.5';
+
+                let optionsHtml = q.options.map((opt, optIdx) => {
+                    let btnClass = "w-full text-left px-3 py-2 rounded-xl text-xs font-semibold border transition ";
+                    if (userAns === optIdx) {
+                        btnClass += (optIdx === q.correctIndex)
+                            ? "bg-emerald-500/25 border-emerald-400 text-emerald-200"
+                            : "bg-rose-500/25 border-rose-500 text-rose-200";
+                    } else {
+                        btnClass += "bg-slate-800/80 hover:bg-slate-700 border-slate-700 text-slate-300";
+                    }
+                    return `<button onclick="answerQuiz(${qIdx}, ${optIdx})" class="${btnClass}">${opt}</button>`;
+                }).join('');
+
+                let feedbackHtml = '';
+                if (isAnswered) {
+                    feedbackHtml = isCorrect
+                        ? `<p class="text-[11px] text-emerald-300 font-medium pt-1">✓ ${q.explanation}</p>`
+                        : `<p class="text-[11px] text-rose-300 font-medium pt-1">✗ Chưa chính xác, em hãy chọn lại đáp án đúng nhé!</p>`;
+                }
+
+                card.innerHTML = `
+                    <div class="text-xs sm:text-sm font-bold text-white">${q.question}</div>
+                    <div class="space-y-1.5">${optionsHtml}</div>
+                    ${feedbackHtml}
+                `;
+                container.appendChild(card);
+            });
+
+            const allCorrect = QUIZ_QUESTIONS.every((q, idx) => appState.quizAnswers[idx] === q.correctIndex);
+            const btnNext = document.getElementById('btn-to-screen-5');
+            const msgEl = document.getElementById('quiz-status-msg');
+
+            if (allCorrect) {
+                btnNext.disabled = false;
+                btnNext.className = "w-full py-4 px-5 rounded-2xl bg-gradient-to-r from-teal-400 to-blue-500 hover:brightness-110 text-slate-950 font-extrabold text-sm sm:text-base shadow-lg transition flex items-center justify-center gap-2 cursor-pointer";
+                msgEl.innerHTML = `<span class="text-emerald-400 font-bold">Tuyệt vời! Các em đã trả lời đúng 3/3 câu hỏi.</span>`;
+            } else {
+                btnNext.disabled = true;
+                btnNext.className = "w-full py-4 px-5 rounded-2xl bg-slate-800 text-slate-500 font-extrabold text-sm sm:text-base transition flex items-center justify-center gap-2 cursor-not-allowed";
+            }
+        }
+
+        function answerQuiz(qIdx, optIdx) {
+            appState.quizAnswers[qIdx] = optIdx;
+            if (optIdx === QUIZ_QUESTIONS[qIdx].correctIndex) {
+                SoundFX.play('place');
+            } else {
+                SoundFX.play('wrong');
+            }
+            saveState();
+            renderQuiz();
+        }
+
+        /* =========================================================================
+           6. MÀN HÌNH 5: BẢN THIẾT KẾ KỸ THUẬT 2D (SVG & TẢI PNG)
+        ========================================================================= */
+        function renderBlueprintScreen() {
+            document.getElementById('blueprint-team-name').textContent = appState.teamName;
+            const session = getCurrentSession();
+            const svg = document.getElementById('blueprint-svg');
+            const colors = {
+                'A': { fill: '#F43F5E', text: '#FFFFFF' },
+                'T': { fill: '#FACC15', text: '#0F172A' },
+                'G': { fill: '#3B82F6', text: '#FFFFFF' },
+                'C': { fill: '#10B981', text: '#FFFFFF' }
+            };
+
+            let svgContent = `
+                <rect width="760" height="440" fill="#020617" rx="16"/>
+                <text x="380" y="28" fill="#2DD4BF" font-family="Be Vietnam Pro, sans-serif" font-size="14" font-weight="800" text-anchor="middle">
+                    BẢN VẼ KỸ THUẬT LẮP RÁP MÔ HÌNH DNA - ${escapeHtml(appState.teamName).toUpperCase()}
+                </text>
+                <!-- Dải khung xương trái (5' -> 3') -->
+                <rect x="115" y="55" width="26" height="335" rx="13" fill="#1E3A8A" stroke="#60A5FA" stroke-width="2"/>
+                <text x="128" y="48" fill="#60A5FA" font-family="Be Vietnam Pro, sans-serif" font-size="13" font-weight="800" text-anchor="middle">5′</text>
+                <text x="128" y="408" fill="#60A5FA" font-family="Be Vietnam Pro, sans-serif" font-size="13" font-weight="800" text-anchor="middle">3′</text>
+
+                <!-- Dải khung xương phải (3' -> 5') -->
+                <rect x="619" y="55" width="26" height="335" rx="13" fill="#4C1D95" stroke="#A78BFA" stroke-width="2"/>
+                <text x="632" y="48" fill="#A78BFA" font-family="Be Vietnam Pro, sans-serif" font-size="13" font-weight="800" text-anchor="middle">3′</text>
+                <text x="632" y="408" fill="#A78BFA" font-family="Be Vietnam Pro, sans-serif" font-size="13" font-weight="800" text-anchor="middle">5′</text>
+            `;
+
+            session.template.forEach((b1, idx) => {
+                const b2 = COMPLEMENT_MAP[b1];
+                const y = 68 + idx * 40;
+                const c1 = colors[b1];
+                const c2 = colors[b2];
+                const isGC = (b1 === 'G' || b1 === 'C');
+
+                svgContent += `
+                    <!-- Số thứ tự -->
+                    <text x="45" y="${y + 19}" fill="#64748B" font-family="monospace" font-size="12" font-weight="bold">#${idx + 1}</text>
+                    <!-- P và D bên trái -->
+                    <circle cx="85" cy="${y + 14}" r="11" fill="#312E81" stroke="#818CF8" stroke-width="1.5"/>
+                    <text x="85" y="${y + 18}" fill="#C7D2FE" font-size="10" font-weight="bold" text-anchor="middle">P</text>
+                    <rect x="117" y="${y + 3}" width="22" height="22" rx="5" fill="#115E59" stroke="#2DD4BF" stroke-width="1.5"/>
+                    <text x="128" y="${y + 18}" fill="#99F6E4" font-size="10" font-weight="bold" text-anchor="middle">D</text>
+
+                    <!-- Thẻ Base trái -->
+                    <rect x="148" y="${y}" width="175" height="28" rx="8" fill="${c1.fill}"/>
+                    <text x="235" y="${y + 19}" fill="${c1.text}" font-family="Be Vietnam Pro, sans-serif" font-size="14" font-weight="800" text-anchor="middle">${b1}</text>
+
+                    <!-- Khớp nối Velcro & Liên kết H ở giữa -->
+                    <line x1="330" y1="${y + 9}" x2="430" y2="${y + 9}" stroke="#2DD4BF" stroke-width="2" stroke-dasharray="5,4"/>
+                    <line x1="330" y1="${y + 19}" x2="430" y2="${y + 19}" stroke="#2DD4BF" stroke-width="2" stroke-dasharray="5,4"/>
+                    ${isGC ? `<line x1="330" y1="${y + 14}" x2="430" y2="${y + 14}" stroke="#A78BFA" stroke-width="2" stroke-dasharray="5,4"/>` : ''}
+
+                    <!-- Thẻ Base phải -->
+                    <rect x="437" y="${y}" width="175" height="28" rx="8" fill="${c2.fill}"/>
+                    <text x="525" y="${y + 19}" fill="${c2.text}" font-family="Be Vietnam Pro, sans-serif" font-size="14" font-weight="800" text-anchor="middle">${b2}</text>
+
+                    <!-- D và P bên phải -->
+                    <rect x="621" y="${y + 3}" width="22" height="22" rx="5" fill="#115E59" stroke="#2DD4BF" stroke-width="1.5"/>
+                    <text x="632" y="${y + 18}" fill="#99F6E4" font-size="10" font-weight="bold" text-anchor="middle">D</text>
+                    <circle cx="675" cy="${y + 14}" r="11" fill="#312E81" stroke="#818CF8" stroke-width="1.5"/>
+                    <text x="675" y="${y + 18}" fill="#C7D2FE" font-size="10" font-weight="bold" text-anchor="middle">P</text>
+                `;
+            });
+
+            svgContent += `
+                <text x="380" y="428" fill="#94A3B8" font-family="Be Vietnam Pro, sans-serif" font-size="11" text-anchor="middle">
+                    Chú thích: Cắt 16 thẻ base rời từ bìa carton • Dán nhám Velcro tại vị trí đường nét đứt giữa 2 mạch
+                </text>
+            `;
+            svg.innerHTML = svgContent;
+        }
+
+        function downloadBlueprintPNG() {
+            SoundFX.play('click');
+            const svg = document.getElementById('blueprint-svg');
+            const serializer = new XMLSerializer();
+            const svgStr = serializer.serializeToString(svg);
+            const canvas = document.createElement('canvas');
+            canvas.width = 1520;
+            canvas.height = 880;
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
+
+            img.onload = function () {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                URL.revokeObjectURL(url);
+                const link = document.createElement('a');
+                link.download = `Ban-Thiet-Ke-DNA-${sanitizeFileName(appState.teamName)}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            };
+            img.src = url;
+        }
+
+        /* =========================================================================
+           7. MÀN HÌNH 6: CHỨNG NHẬN HOÀN THÀNH & XUẤT PNG
+        ========================================================================= */
+        function renderCertificateScreen() {
+            const session = getCurrentSession();
+            document.getElementById('cert-team-name').textContent = appState.teamName;
+            document.getElementById('cert-wish-team').textContent = appState.teamName;
+
+            const subParts = [];
+            if (appState.teamClass) subParts.push(appState.teamClass);
+            if (appState.teamLeader) subParts.push(`Đội trưởng: ${appState.teamLeader}`);
+            document.getElementById('cert-team-sub').textContent = subParts.join(' • ');
+
+            document.getElementById('cert-checks').textContent = session.checkCount;
+            document.getElementById('cert-fixes').textContent = session.fixCount;
+            const correctQuiz = QUIZ_QUESTIONS.filter((q, i) => appState.quizAnswers[i] === q.correctIndex).length;
+            document.getElementById('cert-quiz').textContent = `${correctQuiz} / 3`;
+            document.getElementById('cert-mode-label').textContent =
+                appState.mode === 'basic' ? 'Chế độ cơ bản' : 'Chế độ thử thách';
+
+            const strand1 = session.template.join(' - ');
+            const strand2 = session.template.map(b => COMPLEMENT_MAP[b]).join(' - ');
+            document.getElementById('cert-dna-sequence').innerHTML = `
+                <div class="text-blue-300">5′ — ${strand1} — 3′</div>
+                <div class="text-purple-300">3′ — ${strand2} — 5′</div>
+            `;
+        }
+
+        function downloadCertificatePNG() {
+            SoundFX.play('click');
+            const session = getCurrentSession();
+            const canvas = document.createElement('canvas');
+            canvas.width = 1200;
+            canvas.height = 800;
+            const ctx = canvas.getContext('2d');
+
+            // Nền tối công nghệ
+            const grad = ctx.createLinearGradient(0, 0, 1200, 800);
+            grad.addColorStop(0, '#060B19');
+            grad.addColorStop(1, '#0F172A');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 1200, 800);
+
+            // Khung viền kép
+            ctx.strokeStyle = '#2DD4BF';
+            ctx.lineWidth = 6;
+            ctx.strokeRect(32, 32, 1136, 736);
+            ctx.strokeStyle = '#3B82F6';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(46, 46, 1108, 708);
+
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#2DD4BF';
+            ctx.font = 'bold 20px "Be Vietnam Pro", sans-serif';
+            ctx.fillText('BẢO TÀNG DI TRUYỀN • PHÒNG THÍ NGHIỆM DNA ẢO', 600, 115);
+
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '800 42px "Be Vietnam Pro", sans-serif';
+            ctx.fillText('CHỨNG NHẬN HOÀN THÀNH NHIỆM VỤ', 600, 175);
+
+            ctx.fillStyle = '#94A3B8';
+            ctx.font = '600 20px "Be Vietnam Pro", sans-serif';
+            ctx.fillText('Trao tặng nhóm nghiên cứu:', 600, 240);
+
+            ctx.fillStyle = '#5EEAD4';
+            ctx.font = '800 46px "Be Vietnam Pro", sans-serif';
+            ctx.fillText(appState.teamName, 600, 300);
+
+            const subParts = [];
+            if (appState.teamClass) subParts.push(appState.teamClass);
+            if (appState.teamLeader) subParts.push(`Đội trưởng: ${appState.teamLeader}`);
+            if (subParts.length > 0) {
+                ctx.fillStyle = '#CBD5E1';
+                ctx.font = '500 22px "Be Vietnam Pro", sans-serif';
+                ctx.fillText(subParts.join('  •  '), 600, 345);
+            }
+
+            // 4 ô thông số
+            const stats = [
+                { label: 'Cặp base đúng', val: '8 / 8', color: '#34D399' },
+                { label: 'Lần kiểm tra', val: String(session.checkCount), color: '#60A5FA' },
+                { label: 'Lỗi đã sửa', val: String(session.fixCount), color: '#FBBF24' },
+                { label: 'Câu củng cố', val: '3 / 3', color: '#C084FC' }
+            ];
+            stats.forEach((st, i) => {
+                const bx = 140 + i * 240;
+                ctx.fillStyle = 'rgba(30, 41, 59, 0.9)';
+                ctx.fillRect(bx, 390, 210, 115);
+                ctx.strokeStyle = '#334155';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(bx, 390, 210, 115);
+
+                ctx.fillStyle = '#94A3B8';
+                ctx.font = '600 16px "Be Vietnam Pro", sans-serif';
+                ctx.fillText(st.label, bx + 105, 430);
+
+                ctx.fillStyle = st.color;
+                ctx.font = '800 32px "Be Vietnam Pro", sans-serif';
+                ctx.fillText(st.val, bx + 105, 478);
+            });
+
+            // Chuỗi DNA
+            const s1 = session.template.join(' - ');
+            const s2 = session.template.map(b => COMPLEMENT_MAP[b]).join(' - ');
+            ctx.fillStyle = '#93C5FD';
+            ctx.font = 'bold 20px monospace';
+            ctx.fillText(`5' — ${s1} — 3'`, 600, 565);
+            ctx.fillStyle = '#D8B4FE';
+            ctx.fillText(`3' — ${s2} — 5'`, 600, 600);
+
+            ctx.fillStyle = '#34D399';
+            ctx.font = 'bold 22px "Be Vietnam Pro", sans-serif';
+            ctx.fillText('TRẠNG THÁI: HOÀN THÀNH XUẤT SẮC', 600, 665);
+
+            ctx.fillStyle = '#94A3B8';
+            ctx.font = 'italic 17px "Be Vietnam Pro", sans-serif';
+            ctx.fillText('Sẵn sàng chế tạo mô hình DNA từ vật liệu tái chế!', 600, 710);
+
+            const link = document.createElement('a');
+            link.download = `Chung-Nhan-DNA-${sanitizeFileName(appState.teamName)}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        /* =========================================================================
+           8. HIỆU ỨNG NỀN DNA 3D NHẸ Ở TRANG CHỦ & TIỆN ÍCH CHUNG
+        ========================================================================= */
+        function initHeroBackground3D() {
+            const container = document.getElementById('hero-3d-bg');
+            if (!container || typeof THREE === 'undefined') return;
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(0, 0, 14);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+            const group = new THREE.Group();
+            const colors = [0xF43F5E, 0xFACC15, 0x3B82F6, 0x10B981];
+
+            for (let i = 0; i < 14; i++) {
+                const y = (i - 6.5) * 0.85;
+                const angle = i * 0.55;
+                const row = new THREE.Group();
+                row.position.y = y;
+                row.rotation.y = angle;
+
+                const sGeo = new THREE.SphereGeometry(0.22, 12, 12);
+                const s1 = new THREE.Mesh(sGeo, new THREE.MeshStandardMaterial({ color: 0x3B82F6 }));
+                s1.position.x = -2.1;
+                const s2 = new THREE.Mesh(sGeo, new THREE.MeshStandardMaterial({ color: 0xA78BFA }));
+                s2.position.x = 2.1;
+
+                const bGeo = new THREE.CylinderGeometry(0.11, 0.11, 3.8, 10);
+                bGeo.rotateZ(Math.PI / 2);
+                const bar = new THREE.Mesh(bGeo, new THREE.MeshStandardMaterial({ color: colors[i % 4] }));
+
+                row.add(s1, s2, bar);
+                group.add(row);
+            }
+            group.rotation.z = 0.25;
+            scene.add(group);
+
+            function animateHero() {
+                requestAnimationFrame(animateHero);
+                if (!document.getElementById('screen-1').classList.contains('hidden')) {
+                    group.rotation.y += 0.006;
+                    renderer.render(scene, camera);
+                }
+            }
+            animateHero();
+
+            window.addEventListener('resize', () => {
+                if (container.clientWidth > 0) {
+                    camera.aspect = container.clientWidth / container.clientHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(container.clientWidth, container.clientHeight);
+                }
+            });
+        }
+
+        function showToastModal(title, htmlBody) {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').innerHTML = `<p>${htmlBody}</p>`;
+            document.getElementById('modal-footer').innerHTML = `
+                <button onclick="closeCustomModal()" class="px-5 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-extrabold">Đã hiểu</button>
+            `;
+            modal.classList.remove('hidden');
+        }
+
+        function closeCustomModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+
+        function sanitizeFileName(str) {
+            return (str || 'Nhom-DNA').replace(/[^a-zA-Z0-9\u00C0-\u1EF9_-]/g, '_');
+        }
+
+        // Khởi chạy ứng dụng khi tải trang
+        window.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            setupBankDragEvents();
+            initHeroBackground3D();
+
+            // Nhấn Enter ở ô tên nhóm để bắt đầu ngay
+            document.getElementById('input-team-name').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleStartJourney();
+            });
+
+            if (appState.teamName && appState.currentScreen > 1) {
+                navigateTo(appState.currentScreen);
+            } else {
+                navigateTo(1);
+            }
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
